@@ -9,9 +9,9 @@ Ces deux releases majeures apportent leur lot de nouveautés, certaines mêmes i
 
 L'étude présente les features, en utilisant nativement JPA et Hibernate, sans Spring Data ou autre librairie.
 
-D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7]), d'une autre part, pour mieux comprendre les nouveau mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
+D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7]), d'autre part, pour mieux comprendre les nouveaux mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
 
-L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Il se consacre davantage à Hibernate plutôt qu'à JPA. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarqué. +
+L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Il se consacre davantage à Hibernate plutôt qu'à JPA. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarquée. +
 Ni Spring Data JPA ni Spring JDBC ou autre librairie que Hibernate sont utilisées pour l'accès à la BDD.
 
 == https://in.relation.to/2024/04/01/jakarta-persistence-3/[JPA 3.2]
@@ -145,8 +145,7 @@ Cependant, jusqu'à Hibernate 7, les types embarqués étaient limités.
 En effet, le mapping se faisait exclusivement avec le nom des propriétés (qui devaient correspondre au nom des colonnes en BDD).
 Dans le cas où notre personne dispose de plusieurs adresses, les `@Embedded` n'étaient pas possible, sans https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#embeddable-override[solution de contournement complexe et extrêmement verbeuse] (utilisation de `@AttributeOverride` et `@AttributeOverrides`).
 
-Pour remédier à ce problème, Hibernate 7 propose `@EmbeddedColumnNaming`, permettant d'utiliser plusieurs fois le même type embarqué.
-`@EmbeddedColumnNaming` fonctionne avec un "pattern":
+Pour remédier à ce problème, Hibernate 7 propose `@EmbeddedColumnNaming`, permettant d'utiliser plusieurs fois le même type embarqué avec un pattern:
 
 [source,java]
 ----
@@ -194,12 +193,12 @@ Les patterns `home_%` et `work_%` impliquent une table initialisée de cette man
 Le problème N+1 est bien connu, est compliqué à contourner et a un gros impact sur les performances d'une application:
 
 - En mode eager lorsqu'on récupère un objet, ses associations sont récupérées, les associations des associations sont elles mêmes récupérées ... quand en réalité, on a besoin uniquement de quelques colonnes. Les performances peuvent vite devenir désastreuses ...
-- En mode lazy, il faut initialiser les propriétés à la main, ce qui est fastidieux à mettre en place et à maintenir. Le coût en performance est important, pour chaque association à initialiser, une nouvelle requête sera jouée, *c'est là qu'apparaît le problème N+1* . De plus, lorsqu'on a besoin de la donnée, on se retrouve souvent dans une portion de code où il n'y a plus de contexte de persistence (ou session au sens Hibernate) ouvert ce qui devient souvent casse tête et pousse à produire du code un peu n'importe où, pourvu que ca passe et qu'une session soit ouverte...
+- En mode lazy, il faut initialiser les propriétés à la main, ce qui est fastidieux à mettre en place et à maintenir. Le coût en performance est important, pour chaque association à initialiser, une nouvelle requête sera jouée, *c'est là qu'apparaît le problème N+1* . De plus, lorsqu'on a besoin de la donnée, on se retrouve souvent dans une portion de code où il n'y a plus de contexte de persistence (ou session au sens Hibernate) ce qui devient souvent casse tête et pousse à produire du code un peu n'importe où, pourvu que ca passe et qu'une session soit ouverte...
 - Lorsqu'on mixe les deux (certaines associations en eager, d'autres en lazy), on se retrouve dans des cas où, pour une autre IHM, on a besoin de charger des associations différentes : quoi qu'il arrive, le casse tête est incessant ...
 
 Plusieurs solutions existent :
 
-- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] : peu flexible et réutilisable.
+- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] : Fonctionne bien mais nécessite de faire des requêtes JPQL difficilement réutilisables, un peu partout.
 - Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X)
 - Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
 - Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
@@ -233,7 +232,7 @@ public class Shop {
 }
 ----
 
-Ici, par défaut on peut mettre toutes les associations en `LAZY`, on initialise plusieurs `@NamedEntityGraph`, dans lesquels on spécifie quels associations sont à initialiser :
+Ici, par défaut on peut mettre toutes les associations en `LAZY`, on initialise plusieurs `@NamedEntityGraph`, dans lesquels on spécifie quelles associations sont à initialiser :
 
 - Un graph pour récupérer les `Shop` avec leurs `employees` (étant une association de type `@ManyToMany`)
 - Un graph pour récupérer les `Shop` avec leurs `books`(étant une association de `Shop`) et avec leurs `author` (étant eux même une association de `Book`) : il s'agit de graphe, on peut imbriquer autant d'associations qu'on veut.
@@ -254,12 +253,12 @@ s2 = session.find(entityGraph1, id);
 List<Shop> l1, l2;
 // Cas classique, sans entity graph
 l1 = session
-    .createQuery("Select s from Shop s")
+    .createQuery("from Shop")
     .getResultList();
 // Avec entity graph
 EntityGraph<Shop> entityGraph2 = (EntityGraph<Shop>) session.getEntityGraph("Shop.withBooksAndTheirAuthor");
 l2 = session
-    .createQuery("Select s from Shop s")
+    .createQuery("from Shop")
     .setHint("jakarta.persistence.fetchgraph", entityGraph2)
     .getResultList();
 ----
