@@ -1,0 +1,346 @@
+= Hibernate 7 & JPA 3.2
+:toc: auto
+
+== Intro
+
+https://hibernate.org/orm/releases/7.0/[Hibernate 7], sorti le 19/05 implémente https://projects.eclipse.org/projects/ee4j.jpa/releases/3.2[JPA dans sa version 3.2], sorti le 30/04.
+
+Ces deux releases majeures apportent leur lot de nouveautés, certaines mêmes incontournables.
+
+L'étude présente les features, en utilisant nativement JPA et Hibernate, sans Spring Data ou autre librairie.
+
+D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7]), d'une autre part, pour mieux comprendre les nouveau mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
+
+L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Il se consacre davantage à Hibernate plutôt qu'à JPA. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarqué. +
+Ni Spring Data JPA ni Spring JDBC ou autre librairie que Hibernate sont utilisées pour l'accès à la BDD.
+
+== https://in.relation.to/2024/04/01/jakarta-persistence-3/[JPA 3.2]
+
+=== Configuration
+
+Historiquement, JPA se configurait uniquement depuis un fichier `persistence.xml`.
+
+JPA 3.2 propose une configuration par du code.
+
+[source,java]
+----
+EntityManagerFactory emf =
+    new PersistenceConfiguration("Bookshop")
+                .nonJtaDataSource("java:global/jdbc/BookshopData")
+                .managedClass(Book.class)
+                .property(PersistenceConfiguration.LOCK_TIMEOUT, 5000)
+                .createEntityManagerFactory();
+----
+
+L'objet peut être déclaré dans un bean Spring par exemple. +
+Ensuite, on peut déclarer un `EntityManager` qu'on utilise de manière habituelle avec JPA :
+
+[source,java]
+----
+EntityManager em = emf.createEntityManager();
+try (EntityManager em = emf.createEntityManager()) {
+    em.getTransaction().begin();
+
+    em.persist(...);
+    em.find(..., ...);
+
+    em.getTransaction().commit();
+} catch (Exception e) {
+    em.getTransaction().rollback();
+}
+
+----
+
+=== Méthodes de gestion automatique des transaction
+
+Pour éviter d'ouvrir une transaction, commit, rollback en cas d'exception et fermer l'`EntityManager` à chaque fois, JPA propose des nouvelles méthodes fonctionnelles :
+
+- `EntityManagerFactory.runInTransaction` : gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes sans retour (INSERT, DELETE, UPDATE)
+- `EntityManagerFactory.callInTransaction`: gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes ave retour (SELECT)
+- `EntityManager.runWithConnection` : *À partir d'un `EntityManager`*, gère le cycle de vie d'une connexion JDBC, pour des requêtes SQL natives
+
+Ces fonctions prennent chacune une lambda : l'appel à exécuter. La transaction est gérée automatiquement pour plus de lisibilité.
+
+[source,java]
+----
+/** runInTransaction quand il s'agit d'une requête qui ne retourne rien **/
+entityManagerFactory.runInTransaction( entityManager -> {
+    Book b = entityManager.find(Book.class, id);
+    entityManager.remove(b);
+});
+
+/** callInTransaction quand il s'agit d'une requête avec un retour, un SELECT par exemple **/
+Book b = entityManagerFactory.callInTransaction( entityManager -> {
+    return entityManager.find(Book.class, id);
+});
+
+/** Et runWithConnection, quand du SQL natif doit être joué (procédure stockée par exemple)
+    attention, runWithConnection nécessite un EntityManager et non EntityManagerFactory !
+    On peut justement chainer EntityManagerFactory.runInTransaction et EntityManager.runWithConnection !  **/
+entityManagerFactory.runInTransaction(em ->
+    em.runWithConnection(connection -> {
+        try (Statement s = ((Connection) connection).createStatement()) {
+            s.execute("SELECT 1 FROM DUAL");
+        }
+
+        try (PreparedStatement s = ((Connection) connection).prepareStatement("SELECT * FROM DUAL WHERE DUMMY = ?")) {
+            s.setString(1, "X");
+            s.execute();
+        }
+
+        try (CallableStatement s = ((Connection) connection).prepareCall("{call package(?)}")) {
+            s.setString(1, "arg");
+            s.execute();
+        }
+    })
+);
+----
+
+== Hibernate 7
+=== @EmbeddedColumnNaming
+
+Les types embarqués existent depuis un moment mais étaient limités.
+
+Ils permettent de découper une table avec de nombreuses colonnes en plusieurs objets.
+Typiquement, une table "Personnes" aura des colonnes pour son adresse (rue, code postal, ...)
+
+|===
+| id | first_name | last_name | city | street | zip_code
+| | | | | |
+|===
+
+L'entité peut être découpée avec son type embarqué :
+
+[source,java]
+----
+@Entity
+@Table(name = "Personnes")
+public class Person {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String firstName;
+
+    private String lastName;
+
+    @Embedded
+    private Address address;
+
+    //...
+}
+
+@Embeddable
+public class Address {
+    private String city;
+
+    private String street;
+
+    private String zipCode;
+}
+----
+
+Cependant, jusqu'à Hibernate 7, les types embarqués étaient limités.
+
+En effet, le mapping se faisait exclusivement avec le nom des propriétés (qui devaient correspondre au nom des colonnes en BDD).
+Dans le cas où notre personne dispose de plusieurs adresses, les `@Embedded` n'étaient pas possible, sans https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#embeddable-override[solution de contournement complexe et extrêmement verbeuse] (utilisation de `@AttributeOverride` et `@AttributeOverrides`).
+
+Pour remédier à ce problème, Hibernate 7 propose `@EmbeddedColumnNaming`, permettant d'utiliser plusieurs fois le même type embarqué.
+`@EmbeddedColumnNaming` fonctionne avec un "pattern":
+
+[source,java]
+----
+@Entity
+@Table(name = "Personnes")
+public class Person {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String firstName;
+
+    private String lastName;
+
+    @Embedded
+    @EmbeddedColumnNaming("home_%s")
+    private Address homeAddress;
+
+    @Embedded
+    @EmbeddedColumnNaming("work_%s")
+    private Address workAddress;
+
+    //...
+}
+
+@Embeddable
+public class Address {
+    private String city;
+
+    private String street;
+
+    private String zipCode;
+}
+----
+
+Les patterns `home_%` et `work_%` impliquent une table initialisée de cette manière :
+
+|===
+| id | first_name | last_name | home_city | home_street | home_zip_code | work_city | work_street | work_zip_code
+| | | | | | | | |
+|===
+
+=== @NamedEntityGraph
+
+Le problème N+1 est bien connu, est compliqué à contourner et a un gros impact sur les performances d'une application:
+
+- En mode eager lorsqu'on récupère un objet, ses associations sont récupérées, les associations des associations sont elles mêmes récupérées ... quand en réalité, on a besoin uniquement de quelques colonnes. Les performances peuvent vite devenir désastreuses ...
+- En mode lazy, il faut initialiser les propriétés à la main, ce qui est fastidieux à mettre en place et à maintenir. Le coût en performance est important, pour chaque association à initialiser, une nouvelle requête sera jouée, *c'est là qu'apparaît le problème N+1* . De plus, lorsqu'on a besoin de la donnée, on se retrouve souvent dans une portion de code où il n'y a plus de contexte de persistence (ou session au sens Hibernate) ouvert ce qui devient souvent casse tête et pousse à produire du code un peu n'importe où, pourvu que ca passe et qu'une session soit ouverte...
+- Lorsqu'on mixe les deux (certaines associations en eager, d'autres en lazy), on se retrouve dans des cas où, pour une autre IHM, on a besoin de charger des associations différentes : quoi qu'il arrive, le casse tête est incessant ...
+
+Plusieurs solutions existent :
+
+- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] : peu flexible et réutilisable.
+- Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X)
+- Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
+- Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
+
+Les `EntityGraph` sont une solution élégante (le `join fetch` existe aussi), existant depuis un moment mais enfin "simples" à utiliser grace à la nouvelle annotation `@NamedEntityGraph` (une annotation JPA du même nom existe depuis plus longtemps, nous parlons ici de celle d'Hibernate, beaucoup plus simple à utiliser).
+
+Le principe est le suivant : on initialise un graph, au format String, il décrit quelles seront les associations à récupérer directement dans la requête jouée par Hibernate.
+
+[source, java]
+----
+@Entity
+@Table(name = "Shops")
+@NamedEntityGraph(name = "Shop.withEmployees", graph = "employees")
+@NamedEntityGraph(name = "Shop.withBooksAndTheirAuthor", graph = "books(author)")
+public class Shop {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @Embedded
+    private Address address;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Person owner;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    private Collection<Person> employees;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    private Collection<Book> books;
+}
+----
+
+Ici, par défaut on peut mettre toutes les associations en `LAZY`, on initialise plusieurs `@NamedEntityGraph`, dans lesquels on spécifie quels associations sont à initialiser :
+
+- Un graph pour récupérer les `Shop` avec leurs `employees` (étant une association de type `@ManyToMany`)
+- Un graph pour récupérer les `Shop` avec leurs `books`(étant une association de `Shop`) et avec leurs `author` (étant eux même une association de `Book`) : il s'agit de graphe, on peut imbriquer autant d'associations qu'on veut.
+
+Pour exécuter l'entity graph :
+
+[source, java]
+----
+// cas d'un findById
+Shop s1, s2;
+// Cas classique, sans entity graph
+s1 = session.find(id);
+// Avec entity graph
+EntityGraph<Shop> entityGraph1 = (EntityGraph<Shop>) session.getEntityGraph("Shop.withEmployees");
+s2 = session.find(entityGraph1, id);
+
+// cas d'un findAll
+List<Shop> l1, l2;
+// Cas classique, sans entity graph
+l1 = session
+    .createQuery("Select s from Shop s")
+    .getResultList();
+// Avec entity graph
+EntityGraph<Shop> entityGraph2 = (EntityGraph<Shop>) session.getEntityGraph("Shop.withBooksAndTheirAuthor");
+l2 = session
+    .createQuery("Select s from Shop s")
+    .setHint("jakarta.persistence.fetchgraph", entityGraph2)
+    .getResultList();
+----
+
+L'intérêt est qu'on peut facilement choisir quelles associations seront chargées, pour afficher par exemple deux IHM différentes : un tableau affichant les boutiques et leurs employés, un autre affichant les boutiques, leurs livres et auteurs.
+
+*Remarque :* la documentation suggère qu'il est aussi possible d'inclure des propriétés "classiques" dans le graphe : c'est à dire lazy load des colonnes et non uniquement des associations. Même si JPA le permet, cela dépend de la librairie qui l'implémente et par défaut Hibernate ne permet pas de lazy loader des propriétés ! +
+Voir <<note1>>
+
+
+== Remarques
+
+=== Remarques sur le lazy load Hibernate [[note1]]
+
+La https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#fetching-strategies-dynamic-fetching-entity-graph-parsing-annotation[documentation sur les `@NamedEntityGraph`] suggère qu'il est possible de lazy-load des propriétés (en plus des associations) :
+
+[source,java]
+----
+@Entity
+@NamedEntityGraph( graph="title,isbn,author(name,phoneNumber)" )
+class Book {
+// ...
+}
+----
+
+Ici, on ne charge que les propriétés `title` et `isbn`. Pour les auteurs, on ne charge que `name` et `phoneNumber` : le reste sera à null.
+
+Ce n'est pourtant pas possible :
+
+Une https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#basic-basic-annotation[annotation] `@Basic(optional = true, fetch = FetchType.LAZY)` (qui est facultative) est disponible pour la mettre sur les propriétés "classiques".
+
+[source,java]
+----
+@Entity
+@Table(name = "Personnes")
+public class Person {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @Basic(fetch = FetchType.LAZY)
+    private String firstName;
+
+    @Basic(fetch = FetchType.LAZY)
+    private String lastName;
+}
+----
+
+C'est une annotation *JPA* et non *Hibernate*. Le paramètre `fetch` n'est, d'après la documentation, qu'un hint donné à JPA, mais la capacitié de lazy-loader une *propriété*  est au final le choix de l'implémentation, ici Hibernate et non de JPA.
+
+Par défaut, Hibernate ignore ce paramètre, à moins d'activer le plugin https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#BytecodeEnhancement[bytecode enhancement] et mettre la propriété `enableLazyInitialization` à `true`.
+
+[source,xml]
+----
+<build>
+		<plugins>
+            ...
+			<plugin>
+				<groupId>org.hibernate.orm.tooling</groupId>
+				<artifactId>hibernate-enhance-maven-plugin</artifactId>
+<!-- Il faut mettre EXACTEMENT la même version que la dépendance hibernate ! -->
+
+				<version>7.0.0.Beta1</version>
+				<executions>
+					<execution>
+						<configuration>
+							<failOnError>true</failOnError>
+							<enableLazyInitialization>true</enableLazyInitialization>
+						</configuration>
+						<goals>
+							<goal>enhance</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+----
+
+Et ce plugin n'est disponible qu'en Beta et non en version finale, causant aujourd'hui des problèmes de compatibilité :
+
+Le lazy load sur Hibernate par défaut se limite aux *associations* et il est conseillé de rester sur ce fonctionnement.
+
+Donc il vaut mieux considérer le lazy load de propriété, sur les EntityGraph impossible

@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: Démo Hibernate 7
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+logging:
+  level:
+    com.sqli.hibernate7: debug
+#db:
+#  driver: org.h2.Driver
+#  url: jdbc:h2:mem:test
+#  username: sa
+#  password:
+#
+#hibernate:
+#  dialect: org.hibernate.dialect.H2Dialect
+#  show_sql: true
+#  hbm2ddl-auto: create-drop
+
