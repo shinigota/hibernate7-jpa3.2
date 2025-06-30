@@ -87,7 +87,7 @@ public class StartupService {
 //        logger.info("withBooksAndTheirAuthor !");
 //        List<Shop> l3 = this.shopDao.findAll_withBooksAndTheirAuthor();
 
-        List<Shop> byOwnerId = this.shopDao.findAllByOwnerId(1L);
+        List<Shop> byOwnerId = this.shopDao.findAllByOwnerId(2L);
 
         logger.info("end");
     }

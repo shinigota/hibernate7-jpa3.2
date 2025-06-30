@@ -8,8 +8,18 @@ import java.util.Collection;
 
 @Entity
 @Table(name = "Shops")
-@NamedEntityGraph(name = "Shop.withEmployees", graph = "employees")
-@NamedEntityGraph(name = "Shop.withBooksAndTheirAuthor", graph = "books(author)")
+@org.hibernate.annotations.NamedEntityGraph(
+        name = "Shop.withEmployees",
+        graph = "employees"
+)
+@org.hibernate.annotations.NamedEntityGraph(
+        name = "Shop.withBooksAndTheirAuthor",
+        graph = "books(author)"
+)
+@jakarta.persistence.NamedEntityGraph(
+        name = "Shop.withEmployees.nativeJpa",
+        attributeNodes = @NamedAttributeNode("employees")
+)
 @NamedQuery(name = "Shop.findAllByOwnerId", query = "SELECT s FROM Shop s WHERE s.owner.id = :id")
 public class Shop {
     @Id
