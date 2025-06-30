@@ -125,6 +125,7 @@ List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
 ----
 
 Cela induisait plusieurs complexités :
+
 - `root.<Long>get("id")` : Le nom de la colonne est en dur. Une variable statique peut être créée mais si le nom de la colonne vient à changer, la variable doit être mise à jour
 
 - `<Long>get(...)` : Il est de la responsabilité du développeur de typer correctement l'appel en passant le type générique, ce qui en plus d'être verbeux, peut être source d'erreur (rien n'empêche un mauvais cast) et les mêmes problèmes se posent en cas de refactoring. En pratique, le type générique est souvent omis et on se retrouve avec des warnings dans le code et un code potentiellement imprévisible
