@@ -185,7 +185,7 @@ List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
 
 Par exemple, `root.<Address>get("address").<String>get("city")` devient `root.get(Shop_.address).get(Address_.city)`.
 
-Ici, les nouveautés sur JPA 3.2 sont les constantes contenant le nom des propriétés, entityGraphs nommés, requêtes nommées, mapping de resulset SQL natif ...
+Ici, les nouveautés sur JPA 3.2 sont les constantes contenant le nom des propriétés, entityGraphs nommés, requêtes nommées, mapping de resulset SQL natif. Là où le metamodel était pratique lors de l'utilisation de l'API Criteria, il est désormais tout aussi pratique sur l'utilisation de JPQL, SQL natif, ...
 
 Les nouvelles propriétés du métamodel :
 [source,java]
