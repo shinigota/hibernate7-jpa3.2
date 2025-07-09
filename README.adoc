@@ -51,7 +51,10 @@ try (EntityManager em = emf.createEntityManager()) {
 
 ----
 
-*Résumé* : Cette évolution pourrait rendre possible la création d'une configuration JPA dynamique, ce qui n'était pas possible depuis un XML statique par nature.
+.Résumé
+****
+Cette évolution peut rendre possible la création d'une configuration JPA dynamique, ce qui n'était pas possible depuis un XML statique par nature.
+****
 
 === Méthodes de gestion automatique des transaction
 
@@ -98,11 +101,14 @@ entityManagerFactory.runInTransaction(em ->
 );
 ----
 
-*Résumé* : Cette nouvelle feature est la bienvenue, elle rend la gestion de transaction et session bien plus simple et automatique, globalement est code est bien plus lisible.
+.Résumé
+****
+Cette nouvelle feature est la bienvenue, elle rend la gestion de transaction et session bien plus simple et automatique, globalement est code est bien plus lisible, sans le moindre compromis.
+****
 
 === Metamodel
 
-Historiquement, la définition de `Criterias` passait par l'usage, en dur, des noms des tables, colonnes et la définition manuelle des types.
+Historiquement, la définition de `Criterias` passait par l'usage, en dur, des noms des tables, colonnes puis la définition manuelle des types.
 
 [source,java]
 ----
@@ -128,7 +134,7 @@ Cela induisait plusieurs complexités :
 
 - `root.<Long>get("id")` : Le nom de la colonne est en dur. Une variable statique peut être créée mais si le nom de la colonne vient à changer, la variable doit être mise à jour
 
-- `<Long>get(...)` : Il est de la responsabilité du développeur de typer correctement l'appel, ce qui en plus d'être verbeux, peut être source d'erreur (rien n'empêche de mettre un mauvais type et avoir des erreurs de cast au runtime) et les mêmes problèmes se posent en cas de refactoring. En pratique, le type générique est souvent omis et on se retrouve avec des warnings dans le code et un code potentiellement imprévisible
+- `<Long>get(...)` : Il est de la responsabilité du développeur de typer correctement l'appel, ce qui en plus d'être verbeux, peut être source d'erreur (rien n'empêche de mettre un mauvais type et avoir des erreurs de cast au runtime) et les mêmes problèmes se posent en cas de refactoring. En pratique, le type générique est souvent omis et on se retrouve avec des warnings dans le code et un code potentiellement imprévisible qui n'est pas type-safe
 
 Le métamodel est une solution existante depuis JPA 2. En effet, un ORM implémentant JPA 2 doit permettre de générer des classes *metamodel*, décrivant les colonnes et types de chaque classes.
 
@@ -237,7 +243,41 @@ List<Shop> shops =  this.sessionFactory.callInTransaction( em ->
                 .getResultList());
 ----
 
-*Résumé* : Le metamodel s'enrichit. En principe, il se génère automatiquement et permet de s'affranchir de certains problèmes, donc il n'y a absolument aucune raison à ne pas l'utiliser. Maintenant que tous les objets "nommés" sont disponibles (propriétés/colonnes, entity graphs, requêtes, mapping SQL), l'utilisation du metamodel est bien plus cohérente et on peut au maximum éviter les strings / types en durs.
+.Résumé
+****
+Le metamodel s'enrichit. +
+En principe, il se génère automatiquement et permet de s'affranchir de certains problèmes, donc il n'y a absolument aucune raison à ne pas l'utiliser. Maintenant que tous les objets "nommés" sont disponibles (propriétés/colonnes, entity graphs, requêtes, mapping SQL), l'utilisation du metamodel est bien plus cohérente et on peut au maximum éviter les strings / types en durs.
+
+Point regrettable levé plus tard, il s'agit ici du metalmodel JPA, donc seulement les objets "JPA" sont disponible dans les classes métamodel. Le `@NamedEntityGraph` Hibernate (et non JPA) ne remonte pas dans le metamodel.
+****
+
+=== Options
+
+Lors d'appels JPA (que ce soit par Criterias, JPQL ou depuis l'EntityManager), il est possible de passer certains "hints", c-a-d des options, par exemple :
+
+[source, java]
+----
+var book =
+        em.find(Book.class, isbn,
+                Map.of("jakarta.persistence.cache.retrieveMode",
+                            CacheRetrieveMode.BYPASS,
+                       "jakarta.persistence.query.timeout", 500,
+                       "org.hibernate.readOnly", true);
+----
+
+Dans le cadre de l'`EntityManager` et sur les appels des méthodes `find()`, `lock()` et `refresh()`, ces "hints" peuvent maintenant prendre la forme de variables, plutôt que key/values non type safe.
+[source, java]
+----
+var book =
+        em.find(Book.class, isbn, CacheRetrieveMode.BYPASS,
+                Timeout.milliseconds(500), READ_ONLY);
+----
+
+.Résumé
+****
+L'impact de cette amélioration est limité. +
+Elle ne concerne que les appels par `EntityManager`. Lors d'utilisation de JPQL ou Criterias, il faut toujours passer par les hints "à l'ancienne".
+****
 
 == Hibernate 7
 === @EmbeddedColumnNaming
@@ -331,7 +371,10 @@ Les patterns `home_%` et `work_%` impliquent une table initialisée de cette man
 | | | | | | | | |
 |===
 
-*Résumé* : Le type `Embedabble` est maintenant utilisable plusieurs fois dans un même objet, cette évolution ne sera peut être pas utile tout le temps, mais elle est la bienvenue !
+.Résumé
+****
+Le type `Embedabble` est maintenant utilisable plusieurs fois dans un même objet, cette évolution ne sera peut être pas utile tout le temps, mais elle est la bienvenue !
+****
 
 === @NamedEntityGraph
 
@@ -410,12 +453,38 @@ l2 = session
 
 L'intérêt est qu'on peut facilement choisir quelles associations seront chargées, pour afficher par exemple deux IHM différentes : un tableau affichant les boutiques et leurs employés, un autre affichant les boutiques, leurs livres et auteurs.
 
-*Remarque :* la documentation suggère qu'il est aussi possible d'inclure des propriétés "classiques" dans le graphe : c'est à dire lazy load des colonnes et non uniquement des associations. Même si JPA le permet, cela dépend de la librairie qui l'implémente et par défaut Hibernate ne permet pas de lazy loader des propriétés ! +
+WARNING: la documentation suggère qu'il est aussi possible d'inclure des propriétés "classiques" dans le graphe : c'est à dire lazy load des colonnes et non uniquement des associations. Même si JPA le permet, cela dépend de la librairie qui l'implémente et par défaut Hibernate ne permet pas de lazy loader des propriétés ! +
 Voir <<note1>>
 
-*Résumé* : Sans doute l'évolution la plus importante à retenir ! Les EntityGraph de JPA sont assez complexes à prendre en main mais sont pourtant une solution efficace et flexible concernant le problème N+1. Cette nouvelle annotation rend le principe d'EntityGraph plutôt simple à prendre en main. Point d'attention en revanche, le `@NamedEntityGraph` d'hibernate ne doit pas être confondu avec le `@NamedEntityGraph` de JPA, une différence notable est que le `@NamedEntityGraph` d'Hibernate n'est pas disponible dans le metamodel.
+.Résumé
+****
+Sans doute l'évolution d'Hibernate 7 la plus importante à retenir ! Les EntityGraph de JPA sont assez complexes à prendre en main mais sont pourtant une solution efficace et flexible concernant le problème N+1. Cette nouvelle annotation rend le principe d'EntityGraph plutôt simple à prendre en main. Point d'attention en revanche, le `@NamedEntityGraph` d'hibernate ne doit pas être confondu avec le `@NamedEntityGraph` de JPA, une différence notable est que le `@NamedEntityGraph` d'Hibernate n'est pas disponible dans le metamodel.
+****
 
 == Remarques
+
+=== `EntityGraph` et problème N+1
+
+Le problème N+1 est bien connu, est compliqué à contourner et a un gros impact sur les performances d'une application:
+
+Par défaut, les entités se chargent en mode lazy. Il faut initialiser les associations à la main (par exemple lors des appels `getMonAssociation()`), ce qui peut être fastidieux à mettre en place et à maintenir. Le coût en performance est important, pour chaque association à initialiser, une nouvelle requête sera jouée, *c'est là qu'apparaît le problème N+1* . +
+De plus, lorsqu'on a besoin de la donnée, on se retrouve souvent dans une portion de code où il n'y a plus de contexte de persistence (ou session au sens Hibernate) ce qui devient souvent casse tête et pousse à produire du code un peu n'importe où, pourvu que ca passe et qu'une session soit ouverte, pour initialiser l'objet et ses associations ...
+
+Une solution de contournement est de passer en mode eager. Lors de la récupération d'un objet, ses associations sont récupérées, les associations des associations seront elles aussi récupérées, etc ... quand en réalité, on a besoin uniquement de quelques colonnes. Si côté entités, toutes les associations sont mappées, la récupération d'un objet peut nécessiter de récupérer une grande partie du schéma. Les performances deviennent désastreuses au prix de contourner totalement le problème N+1...
+
+Mixer le mode eager et le mode lazy ne convient pas non plus : on se retrouve dans des cas où, pour une autre IHM, on a besoin de charger des associations différentes. Quoi qu'il arrive, le casse tête est incessant ...
+
+Plusieurs vraies solutions existent :
+
+- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] qui a pour effet de récupérer une association : Fonctionne bien mais nécessite de faire des requêtes JPQL partout au cas par cas.
+- Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X). C'est plutôt une solution à utiliser en *complément* d'autres optimisations.
+- Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
+- Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
+
+
+Sur le principe, un objet `EntityGraph` est simple à utiliser : on l'instancie en indiquant quelles associations doivent êtres initialisées. Ensuite, lors d'appels, que ce soit `JQPL`, `EntityManager` ou `Criteria`, on peut passer cet `EntityGraph` en paramètre.
+
+Toutes les entités auront les bonnes associations chargées automatiquement, dès leur récupération en BDD.
 
 === Remarques sur le lazy load Hibernate [[note1]]
 
@@ -434,7 +503,7 @@ Ici, on ne charge que les propriétés `title` et `isbn`. Pour les auteurs, on n
 
 Ce n'est pourtant pas possible :
 
-Une https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#basic-basic-annotation[annotation] `@Basic(optional = true, fetch = FetchType.LAZY)` (qui est facultative) est disponible pour la mettre sur les propriétés "classiques".
+JPA propose une https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#basic-basic-annotation[annotation] `@Basic(optional = true, fetch = FetchType.LAZY)` (qui est facultative) à placer sur les propriétés "classiques" d'une entité (c-a-d, les propriétés autres que associations `@OneTo...` `@ManyTo...`).
 
 [source,java]
 ----
@@ -484,7 +553,7 @@ Par défaut, Hibernate ignore ce paramètre, à moins d'activer le plugin https:
 	</build>
 ----
 
-Et ce plugin n'est disponible qu'en Beta et non en version finale, causant aujourd'hui des problèmes de compatibilité :
+Le plugin doit être sur la même version qu'Hibernate mais n'est aujourd'hui disponible qu'en Beta et non en version finale, causant actuellement des problèmes de compatibilité :
 
 Le lazy load sur Hibernate par défaut se limite aux *associations* et il est conseillé de rester sur ce fonctionnement.
 
