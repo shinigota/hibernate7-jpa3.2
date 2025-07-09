@@ -58,7 +58,7 @@ Cette évolution peut rendre possible la création d'une configuration JPA dynam
 
 === Méthodes de gestion automatique des transaction
 
-Pour éviter d'ouvrir une transaction, commit, rollback en cas d'exception et fermer l'`EntityManager` à chaque fois, JPA propose des nouvelles méthodes fonctionnelles :
+L' `EntityManager` (et une connexion native `JDBC`) a un cycle de vie à respecter. Pour chaque opération, une transaction doit être ouverte, puis commit si la/les requête(s) sont OK, rollback le cas échéant avec un `try{} catch(){}`. Pour éviter de devoir gérêr ce cycle de vie manuellement, JPA propose des nouvelles méthodes fonctionnelles :
 
 - `EntityManagerFactory.runInTransaction` : gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes sans retour (INSERT, DELETE, UPDATE)
 - `EntityManagerFactory.callInTransaction`: gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes ave retour (SELECT)
@@ -108,101 +108,27 @@ Cette nouvelle feature est la bienvenue, elle rend la gestion de transaction et 
 
 === Metamodel
 
-Historiquement, la définition de `Criterias` passait par l'usage, en dur, des noms des tables, colonnes puis la définition manuelle des types.
+Le `Metamodel` existe depuis JPA 2, pour une présentation courte de la fonctionnalité, voir <<note1>>.
 
-[source,java]
-----
-List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
-            CriteriaBuilder cb = em.getCriteriaBuilder();
-            CriteriaQuery<Shop> cr = cb.createQuery(Shop.class);
-            Root<Shop> root = cr.from(Shop.class);
-            cr.select(root);
-            cr.where(
-                    cb.and(
-                            cb.equal(root.<Long>get("id"), ownerId),
-                            cb.equal(root.<Address>get("address").<String>get("city"), "Pessac")));
+Premièrement, avec JPA 3.2, l'artifactId de la dépendance Hibernate change. Avant cette version, il fallait utiliser la dépendance `hibernate-jpamodelgen`, maintenant renommée `hibernate-processor`.
 
-            return em
-                    .createQuery(cr)
-                    .setHint("jakarta.persistence.fetchgraph", em.getEntityGraph("Shop.withEmployees"))
-                    .getResultList();
-
-        });
-----
-
-Cela induisait plusieurs complexités :
-
-- `root.<Long>get("id")` : Le nom de la colonne est en dur. Une variable statique peut être créée mais si le nom de la colonne vient à changer, la variable doit être mise à jour
-
-- `<Long>get(...)` : Il est de la responsabilité du développeur de typer correctement l'appel, ce qui en plus d'être verbeux, peut être source d'erreur (rien n'empêche de mettre un mauvais type et avoir des erreurs de cast au runtime) et les mêmes problèmes se posent en cas de refactoring. En pratique, le type générique est souvent omis et on se retrouve avec des warnings dans le code et un code potentiellement imprévisible qui n'est pas type-safe
-
-Le métamodel est une solution existante depuis JPA 2. En effet, un ORM implémentant JPA 2 doit permettre de générer des classes *metamodel*, décrivant les colonnes et types de chaque classes.
-
-Un simple ajout de la dépendance permettra de générer les classes *metamodel* pour chaque entité, lors du build.
-
-[source,xml]
-----
-<dependency>
-    <groupId>org.hibernate.orm</groupId>
-    <artifactId>hibernate-processor</artifactId>
-    <version>7.0.3.Final</version>
-</dependency>
-----
-
-[source,java]
-----
-@StaticMetamodel(Book.class)
-public abstract class Book_ {
-    public static final String ID = "id";
-    public static final String TITLE = "title";
-    public static final String AUTHOR = "author";
-    public static final String SHOPS = "shops";
-    public static volatile EntityType<Book> class_;
-    public static volatile SingularAttribute<Book, Long> id;
-    public static volatile SingularAttribute<Book, String> title;
-    public static volatile SingularAttribute<Book, Person> author;
-    public static volatile CollectionAttribute<Book, Shop> shops;
-
-    public Book_() {
-    }
-}
-----
-
-Cette classe peut ensuite être utilisée dans l'API Criteria, pour s'affranchir des noms de colonnes et types en durs. Il n'y a plus de risques liés aux types et aux refactoring, le metamodel est géré automatiquement :
-[source,java]
-----
-List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
-    CriteriaBuilder cb = em.getCriteriaBuilder();
-    CriteriaQuery<Shop> cr = cb.createQuery(Shop.class);
-    Root<Shop> root = cr.from(Shop.class);
-    cr.select(root);
-    cr.where(
-            cb.and(
-                    cb.equal(root.get(Shop_.owner), ownerId),
-                    cb.equal(root.get(Shop_.address).get(Address_.city), "Pessac")));
-
-    return em
-            .createQuery(cr)
-            .setHint("jakarta.persistence.fetchgraph", em.getEntityGraph("Shop.withEmployees"))
-            .getResultList();
-
-});
-----
-
-Par exemple, `root.<Address>get("address").<String>get("city")` devient `root.get(Shop_.address).get(Address_.city)`.
-
-Ici, les nouveautés sur JPA 3.2 sont les constantes contenant le nom des propriétés, entityGraphs nommés, requêtes nommées, mapping de resulset SQL natif. Là où le metamodel était pratique lors de l'utilisation de l'API Criteria, il est désormais tout aussi pratique sur l'utilisation de JPQL, SQL natif, ...
+Les nouveautés sont les constantes contenant le nom des propriétés, entityGraphs nommés, requêtes nommées, mapping de resulset SQL natif. Là où le metamodel était pratique lors de l'utilisation de l'API Criteria, il est désormais tout aussi pratique sur l'utilisation de JPQL, SQL natif, ...
 
 Les nouvelles propriétés du métamodel :
 [source,java]
 ----
-public static final String ID = "id";
-public static final String ADDRESS = "address";
-public static final String OWNER = "owner";
-public static final String EMPLOYEES = "employees";
-public static final String BOOKS = "books";
-public static final String QUERY_SHOP_FIND_ALL_BY_OWNER_ID = "Shop.findAllByOwnerId";
-public static final String GRAPH_SHOP_WITH_EMPLOYEES_NATIVE_JPA = "Shop.withEmployees.nativeJpa";
+@StaticMetamodel(Shop.class)
+public abstract class Shop_ {
+    // ...
+    public static final String ID = "id";
+    public static final String ADDRESS = "address";
+    public static final String OWNER = "owner";
+    public static final String EMPLOYEES = "employees";
+    public static final String BOOKS = "books";
+    public static final String QUERY_SHOP_FIND_ALL_BY_OWNER_ID = "Shop.findAllByOwnerId";
+    public static final String GRAPH_SHOP_WITH_EMPLOYEES_NATIVE_JPA = "Shop.withEmployees.nativeJpa";
+    // ...
+}
 ----
 
 L'entité :
@@ -278,6 +204,10 @@ var book =
 L'impact de cette amélioration est limité. +
 Elle ne concerne que les appels par `EntityManager`. Lors d'utilisation de JPQL ou Criterias, il faut toujours passer par les hints "à l'ancienne".
 ****
+
+=== EntityGraph
+
+Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
 == Hibernate 7
 === @EmbeddedColumnNaming
@@ -378,20 +308,10 @@ Le type `Embedabble` est maintenant utilisable plusieurs fois dans un même obje
 
 === @NamedEntityGraph
 
-Le problème N+1 est bien connu, est compliqué à contourner et a un gros impact sur les performances d'une application:
+Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
-- En mode eager lorsqu'on récupère un objet, ses associations sont récupérées, les associations des associations sont elles mêmes récupérées ... quand en réalité, on a besoin uniquement de quelques colonnes. Les performances peuvent vite devenir désastreuses ...
-- En mode lazy, il faut initialiser les propriétés à la main, ce qui est fastidieux à mettre en place et à maintenir. Le coût en performance est important, pour chaque association à initialiser, une nouvelle requête sera jouée, *c'est là qu'apparaît le problème N+1* . De plus, lorsqu'on a besoin de la donnée, on se retrouve souvent dans une portion de code où il n'y a plus de contexte de persistence (ou session au sens Hibernate) ce qui devient souvent casse tête et pousse à produire du code un peu n'importe où, pourvu que ca passe et qu'une session soit ouverte...
-- Lorsqu'on mixe les deux (certaines associations en eager, d'autres en lazy), on se retrouve dans des cas où, pour une autre IHM, on a besoin de charger des associations différentes : quoi qu'il arrive, le casse tête est incessant ...
-
-Plusieurs solutions existent :
-
-- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] : Fonctionne bien mais nécessite de faire des requêtes JPQL difficilement réutilisables, un peu partout.
-- Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X)
-- Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
-- Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
-
-Les `EntityGraph` sont une solution élégante (le `join fetch` existe aussi), existant depuis un moment mais enfin "simples" à utiliser grace à la nouvelle annotation `@NamedEntityGraph` (une annotation JPA du même nom existe depuis plus longtemps, nous parlons ici de celle d'Hibernate, beaucoup plus simple à utiliser).
+La fonctionnalité, propre à JPA, peut être complexe à prendre en main. Hibernate propose maintenant son annotation `@NamedEntityGraph`, plus simple à putiliser. +
+Attention, une annotation JPA du même nom existe depuis plus longtemps, nous parlons ici de celle d'Hibernate.
 
 Le principe est le suivant : on initialise un graph, au format String, il décrit quelles seront les associations à récupérer directement dans la requête jouée par Hibernate.
 
@@ -454,7 +374,7 @@ l2 = session
 L'intérêt est qu'on peut facilement choisir quelles associations seront chargées, pour afficher par exemple deux IHM différentes : un tableau affichant les boutiques et leurs employés, un autre affichant les boutiques, leurs livres et auteurs.
 
 WARNING: la documentation suggère qu'il est aussi possible d'inclure des propriétés "classiques" dans le graphe : c'est à dire lazy load des colonnes et non uniquement des associations. Même si JPA le permet, cela dépend de la librairie qui l'implémente et par défaut Hibernate ne permet pas de lazy loader des propriétés ! +
-Voir <<note1>>
+Voir <<note3>>
 
 .Résumé
 ****
@@ -463,7 +383,7 @@ Sans doute l'évolution d'Hibernate 7 la plus importante à retenir ! Les Entity
 
 == Remarques
 
-=== `EntityGraph` et problème N+1
+=== `EntityGraph` et problème N+1 [[note1]]
 
 Le problème N+1 est bien connu, est compliqué à contourner et a un gros impact sur les performances d'une application:
 
@@ -486,7 +406,105 @@ Sur le principe, un objet `EntityGraph` est simple à utiliser : on l'instancie 
 
 Toutes les entités auront les bonnes associations chargées automatiquement, dès leur récupération en BDD.
 
-=== Remarques sur le lazy load Hibernate [[note1]]
+// TODO ex code
+
+=== Le Metamodel [[note2]]
+
+Le Metamodel n'est pas nouveau dans JPA et existe depuis JPA 2.
+
+Historiquement, la définition de `Criterias` passait obligatoirement par l'usage, en dur, des noms des tables, colonnes puis la définition manuelle des types.
+
+[source,java]
+----
+List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<Shop> cr = cb.createQuery(Shop.class);
+            Root<Shop> root = cr.from(Shop.class);
+            cr.select(root);
+            cr.where(
+                    cb.and(
+                            cb.equal(root.<Long>get("id"), ownerId),
+                            cb.equal(root.<Address>get("address").<String>get("city"), "Pessac")));
+
+            return em
+                    .createQuery(cr)
+                    .setHint("jakarta.persistence.fetchgraph", em.getEntityGraph("Shop.withEmployees"))
+                    .getResultList();
+
+        });
+----
+
+Cela induisait plusieurs complexités :
+
+- `root.<Long>get("id")` : Le nom de la colonne est en dur. Une variable statique peut être créée mais si le nom de la colonne vient à changer, la variable doit être mise à jour
+
+- `<Long>get(...)` : Il est de la responsabilité du développeur de typer correctement l'appel, ce qui en plus d'être verbeux, peut être source d'erreur (rien n'empêche de mettre un mauvais type et avoir des erreurs de cast au runtime) et les mêmes problèmes se posent en cas de refactoring. En pratique, le type générique est souvent omis et on se retrouve avec des warnings dans le code et un code potentiellement imprévisible qui n'est pas type-safe
+
+Globalement, les criterias ne sont pas type safe, et si une mauvaise colonne est utilisée, on ne s'en rend compte que trop tard, au runtime.
+
+Un ORM implémentant JPA 2 (et plus) doit permettre de générer des classes *metamodel*, décrivant les colonnes et types de chaque classes.
+
+Pour Hibernate, un simple ajout d'une dépendance précise permettra de générer les classes *metamodel* pour chaque entité, lors du build.
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.hibernate.orm</groupId>
+    <artifactId>hibernate-processor</artifactId>
+    <version>7.0.3.Final</version>
+</dependency>
+----
+
+[source,java]
+----
+@StaticMetamodel(Book.class)
+public abstract class Book_ {
+    public static final String ID = "id";
+    public static final String TITLE = "title";
+    public static final String AUTHOR = "author";
+    public static final String SHOPS = "shops";
+    public static volatile EntityType<Book> class_;
+    public static volatile SingularAttribute<Book, Long> id;
+    public static volatile SingularAttribute<Book, String> title;
+    public static volatile SingularAttribute<Book, Person> author;
+    public static volatile CollectionAttribute<Book, Shop> shops;
+
+    public Book_() {
+    }
+}
+----
+
+Cette classe peut ensuite être utilisée dans l'API Criteria :
+[source,java]
+----
+List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
+    CriteriaBuilder cb = em.getCriteriaBuilder();
+    CriteriaQuery<Shop> cr = cb.createQuery(Shop.class);
+    Root<Shop> root = cr.from(Shop.class);
+    cr.select(root);
+    cr.where(
+            cb.and(
+                    cb.equal(root.get(Shop_.owner), ownerId),
+                    cb.equal(root.get(Shop_.address).get(Address_.city), "Pessac")));
+
+    return em
+            .createQuery(cr)
+            .setHint("jakarta.persistence.fetchgraph", em.getEntityGraph("Shop.withEmployees"))
+            .getResultList();
+
+});
+----
+
+Par exemple, `root.<Address>get("address").<String>get("city")` devient `root.get(Shop_.address).get(Address_.city)`.
+
+On peut donc :
+
+- S'affranchir des noms de colonnes et types en durs. Il n'y a plus de risques liés aux types et aux refactoring
+- Éviter les problèmes de mauvaises colonnes et mauvais type qui plantent au runtime, tout est safe et vérifié lors de la compilation. Si une mauvaise colonne et/ou un mauvais type sont utilisés, l'application ne buildera pas.
+
+Le `metamodel` n'est évidemment pas obligatoire, il s'agit uniquement d'un confort supplémentaire pour l'API `Criteria`.
+
+=== Remarques sur le lazy load Hibernate [[note3]]
 
 La https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#fetching-strategies-dynamic-fetching-entity-graph-parsing-annotation[documentation sur les `@NamedEntityGraph`] suggère qu'il est possible de lazy-load des propriétés (en plus des associations) :
 
@@ -558,3 +576,10 @@ Le plugin doit être sur la même version qu'Hibernate mais n'est aujourd'hui di
 Le lazy load sur Hibernate par défaut se limite aux *associations* et il est conseillé de rester sur ce fonctionnement.
 
 Donc il vaut mieux considérer le lazy load de propriété, sur les EntityGraph impossible
+
+
+== Conclusion
+
+Ces versions majeures d'Hibernate 7 et JPA 3.2 sont très intéressantes.
+
+Certaines features sont peu impactantes (options, configuration dynamique), d'autres peuvent s'avérer utiles (amélioration metamodel et type Embedable) et finalement d'autres sont très importantes asbolument à retenir (@NamedEntityGraph) et certainement même à adopter si Hibernate 7 est disponible sur les projets.
