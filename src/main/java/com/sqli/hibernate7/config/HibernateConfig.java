@@ -8,6 +8,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 public class HibernateConfig {
@@ -19,6 +20,7 @@ public class HibernateConfig {
     };
 
     @Bean
+    @Primary
     public SessionFactory sessionFactory() {
         return new HibernatePersistenceConfiguration("com.sqli.hibernate7")
                 .managedClasses(CLASSES_TO_MAP)

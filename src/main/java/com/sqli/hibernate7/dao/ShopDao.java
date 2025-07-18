@@ -46,7 +46,7 @@ public class ShopDao extends AbstractDao<Shop, Long>{
         List<Shop> shops =  this.sessionFactory.callInTransaction( em ->
                 em.createNamedQuery(Shop_.QUERY_SHOP_FIND_ALL_BY_OWNER_ID)
                         .setParameter(Shop_.ID, ownerId)
-                        .setHint("jakarta.persistence.fetchgraph", "Shop.withEmployees")
+                        .setHint("jakarta.persistence.fetchgraph",  em.getEntityGraph("Shop.withEmployees"))
                         .getResultList());
 
         return shops;

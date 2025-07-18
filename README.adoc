@@ -209,6 +209,80 @@ Elle ne concerne que les appels par `EntityManager`. Lors d'utilisation de JPQL 
 
 Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
+La fonctionnalité est très pratique pour contourner le problème N+1 mais souvent mise de côté de part sa difficulté de prise en main et sa verbosité.
+
+Un entity graph peut être défini à partir d'une annotation
+
+[source, java]
+----
+@NamedEntityGraph(name = "project.employees",
+	attributeNodes = @NamedAttributeNode(
+		value = "employees",
+		subgraph = "project.employees.department"
+	),
+	subgraphs = @NamedSubgraph(
+		name = "project.employees.department",
+		attributeNodes = @NamedAttributeNode("department")
+	)
+)
+----
+
+Ou au travers de définition d'objet avec l'API JPA
+[source, java]
+----
+----
+
+L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, l'API JPA qui se retrouve simplifiée :
+
+* Les méthodes sont type safe
+* L'API peut utiliser le metamodel
+* Les `fetch graph` et `load graph` sont dépréciés
+
+L'équivalent avec JPA 3.2 est :
+[source, java]
+----
+----
+
+.Résumé
+****
+Cette nouveauté est très importante. +
+Les EntityGraph sont très efficaces pour traiter le problème N+1 et sont désormais plus accessibles.
+****
+
+=== Simplification JPQL
+JPA 3.2 apporte quelques nouveautés sur les requêtes JPQL.
+
+* Simplification des requêtes simples :
+
+`SELECT b FROM Book b where b.title like :expression:` devient `FROM Book where b.title like :expression:`
+
+La clause `SELECT` est facultative dans le cas où ou veut retourner l'entité sélectionnée. +
+L'alias `b` n'est pas nécessaire quand la requête ne travaille que sur une entité.
+
+* Opérations ensemblistes :
+```
+SELECT name FROM Person
+UNION
+SELECT name FROM Organization
+```
+
+`union`, `intercept` et `except` étaient implémentés par certains ORM sans être officiellement disponibles dans JPA. Ces opérations font maintenant disponibles dans JPA 3.2. +
+
+* Expressions dans les jointures :
+
+`from Author a join Customer c on a.name = c.firstName||' '||c.lastName` : il est maintenant possible de mettre des expressions dans les jointures
+
+* Nouvelles fonctions :
+`select cast(left(fileName,2) as Integer) as chapter from Document` JPA 3.2 propose les nouvelles fonctions `cast`, `left`, `right`, `replace`, `id` et `version`, l'opérateur `||` est aussi disponible en alternative à `concat`
+
+* Amélioration du tri :
+`from Book order by lower(title) asc, publicationDate desc nulls first` les fonctions scalaires comme `lower` sont utilisables dans les tris. Il est aussi possible de décider où placer les `null` en spécifiant `nulls first` ou `nulls last`.
+
+.Résumé
+****
+Ces quelques nouveautés JPQL ne révolutionnent pas JPA mais sont les bienvenues.
+****
+
 == Hibernate 7
 === @EmbeddedColumnNaming
 
@@ -310,7 +384,7 @@ Le type `Embedabble` est maintenant utilisable plusieurs fois dans un même obje
 
 Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
-La fonctionnalité, propre à JPA, peut être complexe à prendre en main. Hibernate propose maintenant son annotation `@NamedEntityGraph`, plus simple à putiliser. +
+La fonctionnalité, propre à JPA, peut être complexe à prendre en main. Hibernate propose maintenant son annotation `@NamedEntityGraph`, plus simple à utiliser. +
 Attention, une annotation JPA du même nom existe depuis plus longtemps, nous parlons ici de celle d'Hibernate.
 
 Le principe est le suivant : on initialise un graph, au format String, il décrit quelles seront les associations à récupérer directement dans la requête jouée par Hibernate.

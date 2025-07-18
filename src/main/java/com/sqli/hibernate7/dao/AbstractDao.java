@@ -28,6 +28,7 @@ public abstract class AbstractDao<T, U> {
     }
 
     public void remove(U id) {
+        sessionFactory.callInTransaction( session -> session)
         sessionFactory.runInTransaction(session -> {
             T entity = session.find(clazz, id);
             session.remove(entity);
