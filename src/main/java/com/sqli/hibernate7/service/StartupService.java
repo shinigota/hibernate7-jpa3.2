@@ -58,21 +58,23 @@ public class StartupService {
         this.personDao.persist(p3);
         this.personDao.persist(p4);
 
+
+
+        Book b1 = new Book("Encyclopédie", p1, new ArrayList<>());
+        Book b2 = new Book("Roman", p4, new ArrayList<>());
+        this.bookDao.persist(b1);
+        this.bookDao.persist(b2);
+
         Shop s1 = new Shop(new Address("Bordeaux", "10 avenue de la librairie", "33000"),
                 p1,
                 List.of(p2, p3),
-                new ArrayList<>());
+                List.of(b1));
         Shop s2 = new Shop(new Address("Pessac", "2 rue de la bibliotheque", "33600"),
                 p3,
                 List.of(p4),
-                new ArrayList<>());
+                List.of(b2));
         this.shopDao.persist(s1);
         this.shopDao.persist(s2);
-
-        Book b1 = new Book("Encyclopédie", p1, List.of(s1));
-        Book b2 = new Book("Roman", p4, List.of(s2));
-        this.bookDao.persist(b1);
-        this.bookDao.persist(b2);
 
 //        logger.info("Test sans entitygraph !");
 //        this.bookDao.find(1L);
@@ -87,6 +89,8 @@ public class StartupService {
 //        List<Shop> l3 = this.shopDao.findAll_withBooksAndTheirAuthor();
 
         List<Shop> byOwnerId = this.shopDao.findAllByOwnerId(2L);
+        List<Shop> test = this.shopDao.findAll_withBooksAndTheirAuthor_withProgrammaticEntityGraph();
+
 
         logger.info("end");
     }

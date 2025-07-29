@@ -211,7 +211,7 @@ Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
 La fonctionnalité est très pratique pour contourner le problème N+1 mais souvent mise de côté de part sa difficulté de prise en main et sa verbosité.
 
-Un entity graph peut être défini à partir d'une annotation
+Un entity graph peut être défini à partir d'une annotation, dans ce cas : pour charger, pour les projets, uniquement les départements des employés
 
 [source, java]
 ----
@@ -230,6 +230,19 @@ Un entity graph peut être défini à partir d'une annotation
 Ou au travers de définition d'objet avec l'API JPA
 [source, java]
 ----
+// Initialisation de l'entity graph
+EntityGraph<Project> eg = em.createEntityGraph(Project.class);
+// Récupération du noeud / association employees
+Subgraph<Employee> employeeSg = eg.addSubgraph("employees");
+// Récupération du département pour les employés
+employeeSg.addAttributeNodes("department");
+
+Query<Project> query = em.createQuery(
+    "SELECT p FROM Project p", Project.class
+);
+query.setHint("javax.persistence.fetchgraph", graph);
+
+List<Project> results = query.getResultList();
 ----
 
 L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, l'API JPA qui se retrouve simplifiée :
@@ -241,6 +254,13 @@ L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, 
 L'équivalent avec JPA 3.2 est :
 [source, java]
 ----
+EntityGraph<Shop> eg = em.createEntityGraph(Project.class);
+eg.addSubgraph(Project_.EMPLOYEES)
+        .addAttributeNodes(Employee_.DEPARTMENT);
+
+return em.createQuery("FROM Project", Project.class)
+        .setHint("jakarta.persistence.fetchgraph", eg)
+        .getResultList();
 ----
 
 .Résumé

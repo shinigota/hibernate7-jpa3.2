@@ -1,6 +1,9 @@
 package com.sqli.hibernate7.dao;
 
 import com.sqli.hibernate7.entity.*;
+import jakarta.persistence.AttributeNode;
+import jakarta.persistence.EntityGraph;
+import jakarta.persistence.Subgraph;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
@@ -8,6 +11,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.annotations.NamedEntityGraph;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -50,5 +54,17 @@ public class ShopDao extends AbstractDao<Shop, Long>{
                         .getResultList());
 
         return shops;
+    }
+
+    public List<Shop> findAll_withBooksAndTheirAuthor_withProgrammaticEntityGraph() {
+        return this.sessionFactory.callInTransaction(em -> {
+            EntityGraph<Shop> eg = em.createEntityGraph(Shop.class);
+            eg.addSubgraph(Shop_.BOOKS)
+                    .addAttributeNodes(Book_.AUTHOR, Book_.TITLE);
+
+            return em.createQuery("FROM Shop", Shop.class)
+                    .setHint("jakarta.persistence.fetchgraph", eg)
+                    .getResultList();
+        });
     }
 }
