@@ -1,17 +1,12 @@
 package com.sqli.hibernate7.dao;
 
-import com.sqli.hibernate7.entity.*;
-import jakarta.persistence.AttributeNode;
+import com.sqli.hibernate7.entity.Book_;
+import com.sqli.hibernate7.entity.Shop;
+import com.sqli.hibernate7.entity.Shop_;
 import jakarta.persistence.EntityGraph;
-import jakarta.persistence.Subgraph;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
 import org.hibernate.SessionFactory;
-import org.hibernate.annotations.NamedEntityGraph;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -29,24 +24,6 @@ public class ShopDao extends AbstractDao<Shop, Long>{
     }
 
     public List<Shop> findAllByOwnerId(Long ownerId) {
-
-
-//        List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
-//            CriteriaBuilder cb = em.getCriteriaBuilder();
-//            CriteriaQuery<Shop> cr = cb.createQuery(Shop.class);
-//            Root<Shop> root = cr.from(Shop.class);
-//            cr.select(root);
-//            cr.where(
-//                    cb.and(
-//                            cb.equal(root.get(Shop_.owner), ownerId),
-//                            cb.equal(root.get(Shop_.address).get(Address_.city), "Pessac")));
-//
-//            return em
-//                    .createQuery(cr)
-//                    .setHint("jakarta.persistence.fetchgraph", em.getEntityGraph(Shop_.GRAPH_SHOP_WITH_EMPLOYEES_NATIVE_JPA))
-//                    .getResultList();
-//
-//        });
         List<Shop> shops =  this.sessionFactory.callInTransaction( em ->
                 em.createNamedQuery(Shop_.QUERY_SHOP_FIND_ALL_BY_OWNER_ID)
                         .setParameter(Shop_.ID, ownerId)
@@ -59,8 +36,9 @@ public class ShopDao extends AbstractDao<Shop, Long>{
     public List<Shop> findAll_withBooksAndTheirAuthor_withProgrammaticEntityGraph() {
         return this.sessionFactory.callInTransaction(em -> {
             EntityGraph<Shop> eg = em.createEntityGraph(Shop.class);
-            eg.addSubgraph(Shop_.BOOKS)
-                    .addAttributeNodes(Book_.AUTHOR, Book_.TITLE);
+
+            eg.addElementSubgraph(Shop_.books)
+                    .addAttributeNodes(Book_.author, Book_.title);
 
             return em.createQuery("FROM Shop", Shop.class)
                     .setHint("jakarta.persistence.fetchgraph", eg)

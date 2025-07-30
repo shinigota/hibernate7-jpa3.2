@@ -1,10 +1,12 @@
 package com.sqli.hibernate7.service;
 
 import com.sqli.hibernate7.dao.BookDao;
-import com.sqli.hibernate7.dao.EventDao;
 import com.sqli.hibernate7.dao.PersonDao;
 import com.sqli.hibernate7.dao.ShopDao;
-import com.sqli.hibernate7.entity.*;
+import com.sqli.hibernate7.entity.Address;
+import com.sqli.hibernate7.entity.Book;
+import com.sqli.hibernate7.entity.Person;
+import com.sqli.hibernate7.entity.Shop;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,13 +19,11 @@ import java.util.List;
 public class StartupService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final EventDao eventDao;
     private final PersonDao personDao;
     private final BookDao bookDao;
     private final ShopDao shopDao;
 
-    public StartupService(EventDao eventDao, PersonDao personDao, BookDao bookDao, ShopDao shopDao) {
-        this.eventDao = eventDao;
+    public StartupService(PersonDao personDao, BookDao bookDao, ShopDao shopDao) {
         this.personDao = personDao;
         this.bookDao = bookDao;
         this.shopDao = shopDao;
@@ -31,20 +31,6 @@ public class StartupService {
 
     @PostConstruct
     public void init() {
-//        Event e1 = new Event("Our very first event!", LocalDateTime.now());
-//        Event e2 = new Event("A follow up event", LocalDateTime.now());
-//        this.eventDao.persist(e1);
-//        this.eventDao.persist(e2);
-//
-//        this.eventDao.find(1L);
-//        this.eventDao.find(2L);
-//
-//        this.eventDao.remove(1L);
-//        this.eventDao.remove(2L);
-//
-//        this.eventDao.find(1L);
-//        this.eventDao.find(2L);
-
         Person p1 = new Person("John", "Doe",
                 new Address("Bordeaux", "10 rue truc", "33000"),
                 new Address("Pessac", "2 rue bidule", "33600"));
@@ -76,21 +62,20 @@ public class StartupService {
         this.shopDao.persist(s1);
         this.shopDao.persist(s2);
 
-//        logger.info("Test sans entitygraph !");
-//        this.bookDao.find(1L);
-//        logger.info("Test avec entitygraph !");
-//        this.bookDao.findWithGraph(1L);
+        logger.info("Test sans entitygraph !");
+        this.bookDao.find(1L);
+        logger.info("Test avec entitygraph !");
+        this.bookDao.findWithGraph(1L);
 
-//        logger.info("all !");
-//        List<Shop> l1 = this.shopDao.findAll();
-//        logger.info("withEmployees !");
-//        List<Shop> l2 = this.shopDao.findAll_withEmployees();
-//        logger.info("withBooksAndTheirAuthor !");
-//        List<Shop> l3 = this.shopDao.findAll_withBooksAndTheirAuthor();
+        logger.info("all !");
+        List<Shop> l1 = this.shopDao.findAll();
+        logger.info("withEmployees !");
+        List<Shop> l2 = this.shopDao.findAll_withEmployees();
+        logger.info("withBooksAndTheirAuthor !");
+        List<Shop> l3 = this.shopDao.findAll_withBooksAndTheirAuthor();
 
         List<Shop> byOwnerId = this.shopDao.findAllByOwnerId(2L);
         List<Shop> test = this.shopDao.findAll_withBooksAndTheirAuthor_withProgrammaticEntityGraph();
-
 
         logger.info("end");
     }

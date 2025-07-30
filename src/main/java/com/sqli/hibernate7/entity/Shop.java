@@ -2,7 +2,6 @@ package com.sqli.hibernate7.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.Hibernate;
-import org.hibernate.annotations.NamedEntityGraph;
 
 import java.util.Collection;
 

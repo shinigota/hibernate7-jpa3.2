@@ -9,7 +9,7 @@ Ces deux releases majeures apportent leur lot de nouveautés, certaines mêmes i
 
 L'étude présente les features, en utilisant nativement JPA et Hibernate, sans Spring Data ou autre librairie.
 
-D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7]), d'autre part, pour mieux comprendre les nouveaux mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
+D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7] et https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes[Spring Boot 4]), d'autre part, pour mieux comprendre les nouveaux mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
 
 L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Il se consacre davantage à Hibernate plutôt qu'à JPA. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarquée. +
 Ni Spring Data JPA ni Spring JDBC ou autre librairie que Hibernate sont utilisées pour l'accès à la BDD.
@@ -53,7 +53,7 @@ try (EntityManager em = emf.createEntityManager()) {
 
 .Résumé
 ****
-Cette évolution peut rendre possible la création d'une configuration JPA dynamique, ce qui n'était pas possible depuis un XML statique par nature.
+Cette évolution peut rendre possible la création d'une configuration JPA dynamique, ce qui n'était pas possible depuis un XML statique.
 ****
 
 === Méthodes de gestion automatique des transaction
@@ -61,10 +61,10 @@ Cette évolution peut rendre possible la création d'une configuration JPA dynam
 L' `EntityManager` (et une connexion native `JDBC`) a un cycle de vie à respecter. Pour chaque opération, une transaction doit être ouverte, puis commit si la/les requête(s) sont OK, rollback le cas échéant avec un `try{} catch(){}`. Pour éviter de devoir gérêr ce cycle de vie manuellement, JPA propose des nouvelles méthodes fonctionnelles :
 
 - `EntityManagerFactory.runInTransaction` : gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes sans retour (INSERT, DELETE, UPDATE)
-- `EntityManagerFactory.callInTransaction`: gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes ave retour (SELECT)
+- `EntityManagerFactory.callInTransaction`: gère automatiquement le cycle de vie de `EntityManager`, pour les requêtes avec retour (SELECT)
 - `EntityManager.runWithConnection` : *À partir d'un `EntityManager`*, gère le cycle de vie d'une connexion JDBC, pour des requêtes SQL natives
 
-Ces fonctions prennent chacune une lambda : l'appel à exécuter. La transaction est gérée automatiquement pour plus de lisibilité.
+Ces fonctions prennent chacune une lambda : l'opération de bdd à exécuter. La transaction est gérée automatiquement pour plus de lisibilité.
 
 [source,java]
 ----
@@ -108,7 +108,7 @@ Cette nouvelle feature est la bienvenue, elle rend la gestion de transaction et 
 
 === Metamodel
 
-Le `Metamodel` existe depuis JPA 2, pour une présentation courte de la fonctionnalité, voir <<note1>>.
+Le `Metamodel` existe depuis JPA 2, pour une présentation courte de la fonctionnalité, voir : <<note2>>.
 
 Premièrement, avec JPA 3.2, l'artifactId de la dépendance Hibernate change. Avant cette version, il fallait utiliser la dépendance `hibernate-jpamodelgen`, maintenant renommée `hibernate-processor`.
 
@@ -151,7 +151,7 @@ public class Shop {
 }
 ----
 
-L'utilisation :
+L'utilisation de ces nouvelles propriétés, depuis la classe metamodel `Shop_` :
 [source,java]
 ----
 // Dans l'entité
@@ -174,7 +174,7 @@ List<Shop> shops =  this.sessionFactory.callInTransaction( em ->
 Le metamodel s'enrichit. +
 En principe, il se génère automatiquement et permet de s'affranchir de certains problèmes, donc il n'y a absolument aucune raison à ne pas l'utiliser. Maintenant que tous les objets "nommés" sont disponibles (propriétés/colonnes, entity graphs, requêtes, mapping SQL), l'utilisation du metamodel est bien plus cohérente et on peut au maximum éviter les strings / types en durs.
 
-Point regrettable levé plus tard, il s'agit ici du metalmodel JPA, donc seulement les objets "JPA" sont disponible dans les classes métamodel. Le `@NamedEntityGraph` Hibernate (et non JPA) ne remonte pas dans le metamodel.
+Point regrettable levé plus tard, il s'agit ici du metalmodel JPA, donc seulement les objets "JPA" sont disponibles dans les classes métamodel. Le `@NamedEntityGraph` Hibernate (et non JPA) ne remonte pas dans le metamodel.
 ****
 
 === Options
@@ -211,15 +211,19 @@ Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
 La fonctionnalité est très pratique pour contourner le problème N+1 mais souvent mise de côté de part sa difficulté de prise en main et sa verbosité.
 
-Un entity graph peut être défini à partir d'une annotation, dans ce cas : pour charger, pour les projets, uniquement les départements des employés
+Un entity graph peut être défini à partir d'une annotation.
+
+Dans l'exemple ci-dessous : pour charger pour les projets, uniquement les départements des employés
 
 [source, java]
 ----
 @NamedEntityGraph(name = "project.employees",
+    // on charge l'association employees
 	attributeNodes = @NamedAttributeNode(
 		value = "employees",
 		subgraph = "project.employees.department"
 	),
+    // dans les employés, on charge la propriété département
 	subgraphs = @NamedSubgraph(
 		name = "project.employees.department",
 		attributeNodes = @NamedAttributeNode("department")
@@ -227,12 +231,13 @@ Un entity graph peut être défini à partir d'une annotation, dans ce cas : pou
 )
 ----
 
-Ou au travers de définition d'objet avec l'API JPA
+Ou au travers de définition d'objet avec l'API JPA et son ancienne version :
 [source, java]
 ----
 // Initialisation de l'entity graph
 EntityGraph<Project> eg = em.createEntityGraph(Project.class);
 // Récupération du noeud / association employees
+// Pas type safe malgré le type générique!
 Subgraph<Employee> employeeSg = eg.addSubgraph("employees");
 // Récupération du département pour les employés
 employeeSg.addAttributeNodes("department");
@@ -245,18 +250,28 @@ query.setHint("javax.persistence.fetchgraph", graph);
 List<Project> results = query.getResultList();
 ----
 
-L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, l'API JPA qui se retrouve simplifiée :
+L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, l'API JPA qui subit quelques améliorations :
 
 * Les méthodes sont type safe
 * L'API peut utiliser le metamodel
-* Les `fetch graph` et `load graph` sont dépréciés
 
 L'équivalent avec JPA 3.2 est :
 [source, java]
 ----
+// Initialisation de l'entity graph
 EntityGraph<Shop> eg = em.createEntityGraph(Project.class);
-eg.addSubgraph(Project_.EMPLOYEES)
-        .addAttributeNodes(Employee_.DEPARTMENT);
+// Récupération du noeud / association employees
+// Une nouvelle fonction addElementSubgraph est disponible,
+// pouvant prendre l'attribut du metamodel type safe !
+Subgraph<Employee> employeeSg = eg.addElementSubgraph(Project_.employees);
+// Récupération de la propriété
+// idem, on peut utiliser le metamodel pour être type safe
+employeeSg.addAttributeNodes(Employee_.department);
+
+
+// On peut chaîner les appels pour que ce soit plus clair
+eg.addElementSubgraph(Project_.employees)
+        .addAttributeNodes(Employee_.department);
 
 return em.createQuery("FROM Project", Project.class)
         .setHint("jakarta.persistence.fetchgraph", eg)
@@ -265,8 +280,8 @@ return em.createQuery("FROM Project", Project.class)
 
 .Résumé
 ****
-Cette nouveauté est très importante. +
-Les EntityGraph sont très efficaces pour traiter le problème N+1 et sont désormais plus accessibles.
+Cette nouveauté est intéressante. +
+Les EntityGraph sont très efficaces pour traiter le problème N+1 et les quelques améliorations sont bienvenues.
 ****
 
 === Simplification JPQL
@@ -276,7 +291,7 @@ JPA 3.2 apporte quelques nouveautés sur les requêtes JPQL.
 
 `SELECT b FROM Book b where b.title like :expression:` devient `FROM Book where b.title like :expression:`
 
-La clause `SELECT` est facultative dans le cas où ou veut retourner l'entité sélectionnée. +
+La clause `SELECT` est facultative dans le cas où ou veut simplement retourner l'entité sélectionnée. +
 L'alias `b` n'est pas nécessaire quand la requête ne travaille que sur une entité.
 
 * Opérations ensemblistes :
@@ -490,7 +505,7 @@ Mixer le mode eager et le mode lazy ne convient pas non plus : on se retrouve da
 
 Plusieurs vraies solutions existent :
 
-- Écrire des requêtes `JPQL` pour chaque cas et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] qui a pour effet de récupérer une association : Fonctionne bien mais nécessite de faire des requêtes JPQL partout au cas par cas.
+- Écrire des requêtes `JPQL` et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] qui a pour effet de récupérer une association : Fonctionne bien mais nécessite de faire des requêtes JPQL, pas forcément réutilisables, partout au cas par cas.
 - Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X). C'est plutôt une solution à utiliser en *complément* d'autres optimisations.
 - Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
 - Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
@@ -500,7 +515,17 @@ Sur le principe, un objet `EntityGraph` est simple à utiliser : on l'instancie 
 
 Toutes les entités auront les bonnes associations chargées automatiquement, dès leur récupération en BDD.
 
-// TODO ex code
+[source, java]
+----
+EntityGraph<Shop> eg = entityManager.createEntityGraph(Project.class);
+eg.addElementSubgraph(Project_.employees)
+        .addAttributeNodes(Employee_.department);
+
+return em.createQuery("FROM Project", Project.class)
+        .setHint("jakarta.persistence.fetchgraph", eg)
+        .getResultList();
+----
+
 
 === Le Metamodel [[note2]]
 
