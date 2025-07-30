@@ -26,11 +26,11 @@ public class BookDao extends AbstractDao<Book, Long>{
 
     public Optional<Book> findWithGraph(Long id) {
         AtomicReference<Book> entity = new AtomicReference<>();
-        sessionFactory.runInTransaction(session -> {
-            EntityGraph<Book> entityGraph = (EntityGraph<Book>) session.getEntityGraph("book.basic_book");
+        sessionFactory.runInTransaction(entityManager -> {
+            EntityGraph<Book> entityGraph = (EntityGraph<Book>) entityManager.getEntityGraph("book.basic_book");
 
 
-            entity.set(    session.find(entityGraph, id));
+            entity.set(    entityManager.find(entityGraph, id));
         });
         Optional<Book> val = Optional.ofNullable(entity.get());
 

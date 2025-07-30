@@ -24,13 +24,13 @@ public abstract class AbstractDao<T, U> {
 
     public void persist(T entity) {
         logger.debug("{} : Persisting entity {}", clazz.getSimpleName(), entity);
-        sessionFactory.runInTransaction(session -> session.persist(entity));
+        sessionFactory.runInTransaction(entityManager -> entityManager.persist(entity));
     }
 
     public void remove(U id) {
-        sessionFactory.runInTransaction(session -> {
-            T entity = session.find(clazz, id);
-            session.remove(entity);
+        sessionFactory.runInTransaction(entityManager -> {
+            T entity = entityManager.find(clazz, id);
+            entityManager.remove(entity);
             logger.debug("{} : Deleting entity {}", clazz.getSimpleName(), id);
         });
     }
@@ -53,12 +53,12 @@ public abstract class AbstractDao<T, U> {
 
     private Optional<T> find(String graphName, U id) {
 
-        Optional<T> val = Optional.ofNullable(sessionFactory.callInTransaction(session -> {
+        Optional<T> val = Optional.ofNullable(sessionFactory.callInTransaction(entityManager -> {
             if (graphName != null) {
-                EntityGraph<T> entityGraph = (EntityGraph<T>) session.getEntityGraph(graphName);
-                return session.find(entityGraph, id);
+                EntityGraph<T> entityGraph = (EntityGraph<T>) entityManager.getEntityGraph(graphName);
+                return entityManager.find(entityGraph, id);
             } else {
-                return session.find(clazz, id);
+                return entityManager.find(clazz, id);
             }
         }));
 
@@ -73,11 +73,11 @@ public abstract class AbstractDao<T, U> {
     }
 
     private List<T> findAll(String graphName) {
-        List<T> results = sessionFactory.callInTransaction(session -> {
-            Query query = session
+        List<T> results = sessionFactory.callInTransaction(entityManager -> {
+            Query query = entityManager
                     .createQuery("from " + clazz.getSimpleName());
             if (graphName != null) {
-                EntityGraph<T> entityGraph = (EntityGraph<T>) session.getEntityGraph(graphName);
+                EntityGraph<T> entityGraph = (EntityGraph<T>) entityManager.getEntityGraph(graphName);
                 query.setHint("jakarta.persistence.fetchgraph", entityGraph);
             }
             return query.getResultList();
