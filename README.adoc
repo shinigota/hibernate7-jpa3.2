@@ -1,7 +1,7 @@
 = Hibernate 7 & JPA 3.2
 :toc: auto
 
-== Intro
+== Introduction
 
 https://hibernate.org/orm/releases/7.0/[Hibernate 7], sorti le 19/05 implémente https://projects.eclipse.org/projects/ee4j.jpa/releases/3.2[JPA dans sa version 3.2], sorti le 30/04.
 
@@ -11,7 +11,7 @@ L'étude présente les features, en utilisant nativement JPA et Hibernate, sans 
 
 D'une part, Spring n'est pour le moment pas compatible JPA 3.2/Hibernate 7 (https://spring.io/blog/2024/10/01/from-spring-framework-6-2-to-7-0[compatibilité prévue pour Spring 7] et https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes[Spring Boot 4]), d'autre part, pour mieux comprendre les nouveaux mécanismes de Hibernate et JPA il est plus pertinent de mettre de côté une surcouche comme Spring Data JPA.
 
-L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Il se consacre davantage à Hibernate plutôt qu'à JPA. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarquée. +
+L'étude contient un projet Java 21 servant d'exemple aux nouveautés. Le starter web de Spring Boot est utilisé, uniquement pour la partie injection de dépendance et avoir une IHM d'administration de la base de données h2 embarquée. +
 Ni Spring Data JPA ni Spring JDBC ou autre librairie que Hibernate sont utilisées pour l'accès à la BDD.
 
 == https://in.relation.to/2024/04/01/jakarta-persistence-3/[JPA 3.2]
@@ -318,7 +318,56 @@ SELECT name FROM Organization
 Ces quelques nouveautés JPQL ne révolutionnent pas JPA mais sont les bienvenues.
 ****
 
-== Hibernate 7
+== https://docs.jboss.org/hibernate/orm/7.0/whats-new/whats-new.html[Hibernate 7]
+
+Hibernate 7 apporte beaucoup de nouveautés.
+
+L'article original reprend certaines features natives à JPA 3.2, présentées dans le chapitre précédent de l'étude. Ces features sont ignorées.
+
+Deaucoup d'autres sont en incubation, elles sont aussi ignorées.
+
+=== Options
+
+En plus des `Options` JPA présentées au dessus, Hibernate propose aussi ses propres options.
+
+* `ReadOnlyMode` (nouveau) : pour charger une entité en lecture seule
+* `EnabledFetchProfile` (new) : pour changer la manière dont une entité est récupérée (eager ou lazy)
+* `BatchSize` (new) : pour définir le nombre d'objets à récupérer en une requête
+* `LockMode` : pour choisir ou non de verrouiller les objets manipulés (en principe stratégie choisir automatiquement par Hibernate)
+* `CacheMode` : pour spécifier comment le cache doit être utilisé
+
+Les options peuvent être passées dans les méthodes comme `find()`, acceptant les options au format vararg pour en passer plusieurs à la fois.
+
+[source,java]
+----
+Session session = this.sessionFactory.getCurrentSession();
+session.find(Shop.class, 1L, ReadOnlyMode.READ_ONLY, LockMode.NONE, CacheMode.IGNORE);
+----
+
+.Résumé
+****
+Cette n'a pas un énorme impact, elle est tout de même la bienvenue cart permet plus de granularités, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
+****
+
+=== `getMultiple` et `findMultiple`
+
+`Session.findMultiple()` et `StatelessSession.getMultiple()` ont été ajoutés pour récupérer une collection d'entités.
+
+Ces appels peuvent être combinés avec les options, dont `BatchSize` pour optimiser la quantités d'appels exécutés.
+
+[source,java]
+----
+Session session = this.sessionFactory.getCurrentSession();
+List<Shop> shops = session.findMultiple(Shop.class, List.of(1L, 2L), new BatchSize(50));
+----
+
+.Résumé
+****
+Ces nouvelles fonction pour récupérer en masse des objets sont les bienvenues. Jusqu'à maintenant, il était nécessaire de passer par une requête JPQL ou Criteria pour récupérer des objets en masse, ce qui n'est plus le cas maintenant :
+
+On peut récupérer un objet par son ID, tout comme on peut récupérer plusieurs objets par leurs IDs.
+****
+
 === @EmbeddedColumnNaming
 
 Les types embarqués existent depuis un moment mais étaient limités.
