@@ -207,7 +207,7 @@ Elle ne concerne que les appels par `EntityManager`. Lors d'utilisation de JPQL 
 
 === EntityGraph
 
-Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
+Les `EntityGraph` existent depuis JPA 2.1, voir <<note1>>.
 
 La fonctionnalité est très pratique pour contourner le problème N+1 mais souvent mise de côté de part sa difficulté de prise en main et sa verbosité.
 
