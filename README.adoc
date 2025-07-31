@@ -211,27 +211,12 @@ Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
 La fonctionnalité est très pratique pour contourner le problème N+1 mais souvent mise de côté de part sa difficulté de prise en main et sa verbosité.
 
-Un entity graph peut être défini à partir d'une annotation.
+Un entity graph peut être défini à partir d'une annotation, et de l'API JPA.
 
-Dans l'exemple ci-dessous : pour charger pour les projets, uniquement les départements des employés
+C'est l'API JPA qui évolue.
 
-[source, java]
-----
-@NamedEntityGraph(name = "project.employees",
-    // on charge l'association employees
-	attributeNodes = @NamedAttributeNode(
-		value = "employees",
-		subgraph = "project.employees.department"
-	),
-    // dans les employés, on charge la propriété département
-	subgraphs = @NamedSubgraph(
-		name = "project.employees.department",
-		attributeNodes = @NamedAttributeNode("department")
-	)
-)
-----
+Dans l'exemple ci-dessous : pour charger pour les projets, uniquement les départements des employés avec l'ancienne version de JPA :
 
-Ou au travers de définition d'objet avec l'API JPA et son ancienne version :
 [source, java]
 ----
 // Initialisation de l'entity graph
@@ -250,12 +235,7 @@ query.setHint("javax.persistence.fetchgraph", graph);
 List<Project> results = query.getResultList();
 ----
 
-L'annotation JPA `@NamedEntityGraph` est inchangée, ici, c'est la 2e solution, l'API JPA qui subit quelques améliorations :
-
-* Les méthodes sont type safe
-* L'API peut utiliser le metamodel
-
-L'équivalent avec JPA 3.2 est :
+L'équivalent avec JPA 3.2 :
 [source, java]
 ----
 // Initialisation de l'entity graph
@@ -277,6 +257,12 @@ return em.createQuery("FROM Project", Project.class)
         .setHint("jakarta.persistence.fetchgraph", eg)
         .getResultList();
 ----
+
+Avec les améliorations, on constate que :
+
+* L'API peut utiliser le metamodel
+* Les méthodes sont type safe
+
 
 .Résumé
 ****
@@ -564,6 +550,25 @@ Sur le principe, un objet `EntityGraph` est simple à utiliser : on l'instancie 
 
 Toutes les entités auront les bonnes associations chargées automatiquement, dès leur récupération en BDD.
 
+Initialisation d'un `EntityGraph` depuis une annotation au niveau de l'entité :
+[source, java]
+----
+@NamedEntityGraph(name = "project.employees",
+    // on charge l'association employees
+	attributeNodes = @NamedAttributeNode(
+		value = "employees",
+		subgraph = "project.employees.department"
+	),
+    // dans les employés, on charge la propriété département
+	subgraphs = @NamedSubgraph(
+		name = "project.employees.department",
+		attributeNodes = @NamedAttributeNode("department")
+	)
+)
+----
+
+Ou dans un `DAO` ou `Service` :
+
 [source, java]
 ----
 EntityGraph<Shop> eg = entityManager.createEntityGraph(Project.class);
@@ -575,6 +580,7 @@ return em.createQuery("FROM Project", Project.class)
         .getResultList();
 ----
 
+*Point important :* https://www.baeldung.com/spring-data-jpa-named-entity-graphs[Spring Data est évidemment compatible avec les EntityGraph !] Avec Spring Framework 7, on peut espérer quelques nouveautées associées à JPA 3.2 et Hibernate 7
 
 === Le Metamodel [[note2]]
 
@@ -671,6 +677,8 @@ Puisque les propriétés du metamodel portent à la fois le type et le nom de la
 - Éviter les problèmes de mauvaises colonnes et mauvais type qui plantent au runtime, tout est safe et vérifié lors de la compilation. Si une mauvaise colonne et/ou un mauvais type sont utilisés, l'application ne buildera pas.
 
 Le `metamodel` n'est évidemment pas obligatoire, il s'agit uniquement d'un confort supplémentaire pour l'API `Criteria`.
+
+Évidemment, https://www.baeldung.com/hibernate-criteria-queries-metamodel[Spring Data n'empêche pas l'utilisation du metamodel], lorsqu'on utilise l'API Criteria par exemple.
 
 === Remarques sur le lazy load Hibernate [[note3]]
 
