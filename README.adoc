@@ -3,7 +3,7 @@
 
 == Introduction
 
-https://hibernate.org/orm/releases/7.0/[Hibernate 7], sorti le 19/05 implémente https://projects.eclipse.org/projects/ee4j.jpa/releases/3.2[JPA dans sa version 3.2], sorti le 30/04.
+https://hibernate.org/orm/releases/7.0/[Hibernate 7], sorti le 19/05/2025 implémente https://projects.eclipse.org/projects/ee4j.jpa/releases/3.2[JPA dans sa version 3.2], sorti le 30/04/2025.
 
 Ces deux releases majeures apportent leur lot de nouveautés, certaines mêmes incontournables.
 
