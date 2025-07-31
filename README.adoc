@@ -452,7 +452,7 @@ public class Address {
 }
 ----
 
-Les patterns `home_%` et `work_%` impliquent une table initialisée de cette manière :
+Les patterns `home_%` et `work_%` impliquent que la table avoir des colonnes nommées de cette manière:
 
 |===
 | id | first_name | last_name | home_city | home_street | home_zip_code | work_city | work_street | work_zip_code
