@@ -554,10 +554,10 @@ Mixer le mode eager et le mode lazy ne convient pas non plus : on se retrouve da
 
 Plusieurs vraies solutions existent :
 
-- Écrire des requêtes `JPQL` et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] qui a pour effet de récupérer une association : Fonctionne bien mais nécessite de faire des requêtes JPQL, pas forcément réutilisables, partout au cas par cas.
+- Écrire des requêtes `JPQL` et utiliser https://www.baeldung.com/jpa-join-types#fetch[JOIN FETCH] qui a pour effet de récupérer une association : Fonctionne bien mais nécessite de faire des requêtes JPQL au cas par cas, peu réutilisables
 - Utiliser https://docs.jboss.org/hibernate/orm/6.5/javadocs/org/hibernate/annotations/BatchSize.html[@BatchSize] : ne règle pas directement le problème, mais permet de réduire grandement le nombre de requêtes lancées (au lieu de récupérer les associations unes par unes, on les récupères par lots de X). C'est plutôt une solution à utiliser en *complément* d'autres optimisations.
-- Dupliquer des entités, mapper les propriétés autrement (faire l'équivalent de vues SQL): verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
-- Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination) là où une requête JPQL est plus difficilement réutilisable.
+- Dupliquer l'entité pour la mapper "partiellement" (faire l'équivalent de vues SQL), d'une entité à l'autre, mapper différentes associations : verbeux, nécessite de dupliquer et si une table change, risque d'impact sur un plus grand nombre de classes
+- Finalement, les https://www.baeldung.com/jpa-entity-graph[EntityGraph], permettant de définir au travers d'un objet, l'arbre d'association à initialiser. Ce qui est flexible, car réutilisable dans la plupart des méthodes (criteria, find, méthodes de pagination, JPQL) là où une requête JPQL est spécifique donc plus difficilement réutilisable.
 
 
 Sur le principe, un objet `EntityGraph` est simple à utiliser : on l'instancie en indiquant quelles associations doivent êtres initialisées. Ensuite, lors d'appels, que ce soit `JQPL`, `EntityManager` ou `Criteria`, on peut passer cet `EntityGraph` en paramètre.
@@ -665,7 +665,7 @@ List<Shop> shops = this.sessionFactory.callInTransaction(em -> {
 
 Par exemple, `root.<Address>get("address").<String>get("city")` devient `root.get(Shop_.address).get(Address_.city)`.
 
-On peut donc :
+Puisque les propriétés du metamodel portent à la fois le type et le nom de la colonne, on peut donc :
 
 - S'affranchir des noms de colonnes et types en durs. Il n'y a plus de risques liés aux types et aux refactoring
 - Éviter les problèmes de mauvaises colonnes et mauvais type qui plantent au runtime, tout est safe et vérifié lors de la compilation. Si une mauvaise colonne et/ou un mauvais type sont utilisés, l'application ne buildera pas.
@@ -691,6 +691,7 @@ Ce n'est pourtant pas possible :
 
 JPA propose une https://docs.jboss.org/hibernate/orm/7.0/userguide/html_single/Hibernate_User_Guide.html#basic-basic-annotation[annotation] `@Basic(optional = true, fetch = FetchType.LAZY)` (qui est facultative) à placer sur les propriétés "classiques" d'une entité (c-a-d, les propriétés autres que associations `@OneTo...` `@ManyTo...`).
 
+On peut, à priori, s'en servir entre autres pour préciser qu'une *propriété* doit être lazy-load (ce qu'on a l'habitude de faire sur une *association*)
 [source,java]
 ----
 @Entity
@@ -743,11 +744,25 @@ Le plugin doit être sur la même version qu'Hibernate mais n'est aujourd'hui di
 
 Le lazy load sur Hibernate par défaut se limite aux *associations* et il est conseillé de rester sur ce fonctionnement.
 
-Donc il vaut mieux considérer le lazy load de propriété, sur les EntityGraph impossible
+Donc il vaut mieux considérer le lazy load de propriété, sur les EntityGraph, impossible.
 
 
 == Conclusion
 
 Ces versions majeures d'Hibernate 7 et JPA 3.2 sont très intéressantes.
 
-Certaines features sont peu impactantes (options, configuration dynamique), d'autres peuvent s'avérer utiles (amélioration metamodel et type Embedable) et finalement d'autres sont très importantes asbolument à retenir (@NamedEntityGraph) et certainement même à adopter si Hibernate 7 est disponible sur les projets.
+Certaines features sont peu impactantes :
+
+* options
+* configuration dynamique
+* ...
+
+D'autres peuvent s'avérer utiles :
+
+* amélioration metamodel
+* Embedable
+* nouvelles fonctions JPQL et EntityManager/Session
+
+Finalement d'autres sont incontournables
+
+* Améliorations sur les EntityGraph (@NamedEntityGraph et amélioration API JPA)

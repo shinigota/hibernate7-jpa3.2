@@ -4,7 +4,8 @@ import com.sqli.hibernate7.entity.Book_;
 import com.sqli.hibernate7.entity.Shop;
 import com.sqli.hibernate7.entity.Shop_;
 import jakarta.persistence.EntityGraph;
-import org.hibernate.SessionFactory;
+import jakarta.persistence.FindOption;
+import org.hibernate.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,6 +25,9 @@ public class ShopDao extends AbstractDao<Shop, Long>{
     }
 
     public List<Shop> findAllByOwnerId(Long ownerId) {
+        Session session = this.sessionFactory.getCurrentSession();
+        List<Shop> shops = session.findMultiple(Shop.class, List.of(1L, 2L), new BatchSize(50), CacheMode.);
+        session.find(Shop.class, 1L, ReadOnlyMode.READ_ONLY, LockMode.NONE, CacheMode.IGNORE);
         List<Shop> shops =  this.sessionFactory.callInTransaction( em ->
                 em.createNamedQuery(Shop_.QUERY_SHOP_FIND_ALL_BY_OWNER_ID)
                         .setParameter(Shop_.ID, ownerId)
