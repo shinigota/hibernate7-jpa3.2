@@ -215,7 +215,7 @@ Un entity graph peut être défini à partir d'une annotation, et de l'API JPA.
 
 C'est l'API JPA qui évolue.
 
-Dans l'exemple ci-dessous : pour charger pour les projets, uniquement les départements des employés avec l'ancienne version de JPA :
+Dans l'exemple ci-dessous écrit avec l'ancienne version de JPA : pour charger pour des projets, uniquement les départements de leurs employés :
 
 [source, java]
 ----
