@@ -346,7 +346,7 @@ session.find(Shop.class, 1L, ReadOnlyMode.READ_ONLY, LockMode.NONE, CacheMode.IG
 
 .Résumé
 ****
-Cette faeture n'a pas un énorme impact, elle est tout de même la bienvenue cart permet plus de granularité, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
+Cette feature n'a pas un énorme impact, elle est tout de même la bienvenue car permet plus de granularité, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
 ****
 
 === `getMultiple` et `findMultiple`
