@@ -69,13 +69,13 @@ Ces fonctions prennent chacune une lambda : l'opération de bdd à exécuter. La
 [source,java]
 ----
 /** runInTransaction quand il s'agit d'une requête qui ne retourne rien **/
-entityManagerFactory.runInTransaction( entityManager -> {
+entityManagerFactory.runInTransaction(entityManager -> {
     Book b = entityManager.find(Book.class, id);
     entityManager.remove(b);
 });
 
 /** callInTransaction quand il s'agit d'une requête avec un retour, un SELECT par exemple **/
-Book b = entityManagerFactory.callInTransaction( entityManager -> {
+Book b = entityManagerFactory.callInTransaction(entityManager -> {
     return entityManager.find(Book.class, id);
 });
 
@@ -301,7 +301,7 @@ UNION
 SELECT name FROM Organization
 ```
 
-`union`, `intercept` et `except` étaient implémentés par certains ORM sans être officiellement disponibles dans JPA. Ces opérations font maintenant disponibles dans JPA 3.2. +
+`union`, `intercept` et `except` étaient implémentés par certains ORM sans être officiellement disponibles dans JPA. Ces opérations sont maintenant disponibles dans JPA 3.2. +
 
 * Expressions dans les jointures :
 
@@ -324,7 +324,7 @@ Hibernate 7 apporte beaucoup de nouveautés.
 
 L'article original reprend certaines features natives à JPA 3.2, présentées dans le chapitre précédent de l'étude. Ces features sont ignorées.
 
-Deaucoup d'autres sont en incubation, elles sont aussi ignorées.
+Beaucoup d'autres sont en incubation, elles sont aussi ignorées.
 
 === Options
 
@@ -346,7 +346,7 @@ session.find(Shop.class, 1L, ReadOnlyMode.READ_ONLY, LockMode.NONE, CacheMode.IG
 
 .Résumé
 ****
-Cette n'a pas un énorme impact, elle est tout de même la bienvenue cart permet plus de granularités, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
+Cette faeture n'a pas un énorme impact, elle est tout de même la bienvenue cart permet plus de granularité, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
 ****
 
 === `getMultiple` et `findMultiple`
@@ -363,7 +363,7 @@ List<Shop> shops = session.findMultiple(Shop.class, List.of(1L, 2L), new BatchSi
 
 .Résumé
 ****
-Ces nouvelles fonction pour récupérer en masse des objets sont les bienvenues. Jusqu'à maintenant, il était nécessaire de passer par une requête JPQL ou Criteria pour récupérer des objets en masse, ce qui n'est plus le cas maintenant :
+Ces nouvelles fonctions pour récupérer en masse des objets sont les bienvenues. Jusqu'à maintenant, il était nécessaire de passer par une requête JPQL ou Criteria pour récupérer des objets en masse, ce qui n'est plus le cas maintenant :
 
 On peut récupérer un objet par son ID, tout comme on peut récupérer plusieurs objets par leurs IDs.
 ****
@@ -536,7 +536,7 @@ Voir <<note3>>
 
 .Résumé
 ****
-Sans doute l'évolution d'Hibernate 7 la plus importante à retenir ! Les EntityGraph de JPA sont assez complexes à prendre en main mais sont pourtant une solution efficace et flexible concernant le problème N+1. Cette nouvelle annotation rend le principe d'EntityGraph plutôt simple à prendre en main. Point d'attention en revanche, le `@NamedEntityGraph` d'hibernate ne doit pas être confondu avec le `@NamedEntityGraph` de JPA, une différence notable est que le `@NamedEntityGraph` d'Hibernate n'est pas disponible dans le metamodel.
+Sans doute une des évolutions les plus importantes ! Les EntityGraph de JPA sont assez complexes à prendre en main mais sont pourtant une solution efficace et flexible concernant le problème N+1. Cette nouvelle annotation rend le principe d'EntityGraph plutôt simple à prendre en main. Point d'attention en revanche, le `@NamedEntityGraph` d'Hibernate ne doit pas être confondu avec le `@NamedEntityGraph` de JPA, une différence notable est que le `@NamedEntityGraph` d'Hibernate n'est pas disponible dans le metamodel.
 ****
 
 == Remarques
