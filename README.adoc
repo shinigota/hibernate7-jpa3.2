@@ -114,23 +114,6 @@ Premièrement, avec JPA 3.2, l'artifactId de la dépendance Hibernate change. Av
 
 Les nouveautés sont les constantes contenant le nom des propriétés, entityGraphs nommés, requêtes nommées, mapping de resulset SQL natif. Là où le metamodel était pratique lors de l'utilisation de l'API Criteria, il est désormais tout aussi pratique sur l'utilisation de JPQL, SQL natif, ...
 
-Les nouvelles propriétés du métamodel :
-[source,java]
-----
-@StaticMetamodel(Shop.class)
-public abstract class Shop_ {
-    // ...
-    public static final String ID = "id";
-    public static final String ADDRESS = "address";
-    public static final String OWNER = "owner";
-    public static final String EMPLOYEES = "employees";
-    public static final String BOOKS = "books";
-    public static final String QUERY_SHOP_FIND_ALL_BY_OWNER_ID = "Shop.findAllByOwnerId";
-    public static final String GRAPH_SHOP_WITH_EMPLOYEES_NATIVE_JPA = "Shop.withEmployees.nativeJpa";
-    // ...
-}
-----
-
 L'entité :
 [source,java]
 ----
@@ -147,6 +130,23 @@ public class Shop {
     @Embedded
     private Address address;
 
+    // ...
+}
+----
+
+Les nouvelles propriétés du métamodel :
+[source,java]
+----
+@StaticMetamodel(Shop.class)
+public abstract class Shop_ {
+    // ...
+    public static final String ID = "id";
+    public static final String ADDRESS = "address";
+    public static final String OWNER = "owner";
+    public static final String EMPLOYEES = "employees";
+    public static final String BOOKS = "books";
+    public static final String QUERY_SHOP_FIND_ALL_BY_OWNER_ID = "Shop.findAllByOwnerId";
+    public static final String GRAPH_SHOP_WITH_EMPLOYEES_NATIVE_JPA = "Shop.withEmployees.nativeJpa";
     // ...
 }
 ----
