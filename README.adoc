@@ -16,7 +16,7 @@ Ni Spring Data JPA ni Spring JDBC ou autre librairie que Hibernate sont utilisé
 
 == https://in.relation.to/2024/04/01/jakarta-persistence-3/[JPA 3.2]
 
-=== Configuration
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#programmatic-configuration[Configuration]
 
 Historiquement, JPA se configurait uniquement depuis un fichier `persistence.xml`.
 
@@ -56,7 +56,7 @@ try (EntityManager em = emf.createEntityManager()) {
 Cette évolution peut rendre possible la création d'une configuration JPA dynamique, ce qui n'était pas possible depuis un XML statique.
 ****
 
-=== Méthodes de gestion automatique des transaction
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#convenience-methods-to-tidy-up-exception-handling[Méthodes de gestion automatique des transaction]
 
 L' `EntityManager` (et une connexion native `JDBC`) a un cycle de vie à respecter. Pour chaque opération, une transaction doit être ouverte, puis commit si la/les requête(s) sont OK, rollback le cas échéant avec un `try{} catch(){}`. Pour éviter de devoir gérêr ce cycle de vie manuellement, JPA propose des nouvelles méthodes fonctionnelles :
 
@@ -106,7 +106,7 @@ entityManagerFactory.runInTransaction(em ->
 Cette nouvelle feature est la bienvenue, elle rend la gestion de transaction et session bien plus simple et automatique, globalement est code est bien plus lisible, sans le moindre compromis.
 ****
 
-=== Metamodel
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#type-safety-and-the-static-metamodel[Metamodel]
 
 Le `Metamodel` existe depuis JPA 2, pour une présentation courte de la fonctionnalité, voir : <<note2>>.
 
@@ -177,7 +177,7 @@ En principe, il se génère automatiquement et permet de s'affranchir de certain
 Point regrettable levé plus tard, il s'agit ici du metalmodel JPA, donc seulement les objets "JPA" sont disponibles dans les classes métamodel. Le `@NamedEntityGraph` Hibernate (et non JPA) ne remonte pas dans le metamodel.
 ****
 
-=== Options
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#options[Options]
 
 Lors d'appels JPA (que ce soit par Criterias, JPQL ou depuis l'EntityManager), il est possible de passer certains "hints", c-a-d des options, par exemple :
 
@@ -205,7 +205,7 @@ L'impact de cette amélioration est limité. +
 Elle ne concerne que les appels par `EntityManager`. Lors d'utilisation de JPQL ou Criterias, il faut toujours passer par les hints "à l'ancienne".
 ****
 
-=== EntityGraph
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#entitygraph[EntityGraph]
 
 Les `EntityGraph` existent depuis JPA 2.1, voir <<note1>>.
 
@@ -270,7 +270,7 @@ Cette nouveauté est intéressante. +
 Les EntityGraph sont très efficaces pour traiter le problème N+1 et les quelques améliorations sont bienvenues.
 ****
 
-=== Simplification JPQL
+=== https://in.relation.to/2024/04/01/jakarta-persistence-3/#enhancements-to-jpql[Améliorations JPQL]
 JPA 3.2 apporte quelques nouveautés sur les requêtes JPQL.
 
 * Simplification des requêtes simples :
@@ -312,7 +312,7 @@ L'article original reprend certaines features natives à JPA 3.2, présentées d
 
 Beaucoup d'autres sont en incubation, elles sont aussi ignorées.
 
-=== Options
+=== https://docs.jboss.org/hibernate/orm/7.0/whats-new/whats-new.html#operation-options[Options]
 
 En plus des `Options` JPA présentées au dessus, Hibernate propose aussi ses propres options.
 
@@ -335,7 +335,7 @@ session.find(Shop.class, 1L, ReadOnlyMode.READ_ONLY, LockMode.NONE, CacheMode.IG
 Cette feature n'a pas un énorme impact, elle est tout de même la bienvenue car permet plus de granularité, pour des cas très particuliers, lors de la manipulation de `Sessions` et `EntityManager`.
 ****
 
-=== `getMultiple` et `findMultiple`
+=== https://docs.jboss.org/hibernate/orm/7.0/whats-new/whats-new.html#session-find-multiple[`getMultiple` et `findMultiple`]
 
 `Session.findMultiple()` et `StatelessSession.getMultiple()` ont été ajoutés pour récupérer une collection d'entités.
 
@@ -354,7 +354,10 @@ Ces nouvelles fonctions pour récupérer en masse des objets sont les bienvenues
 On peut récupérer un objet par son ID, tout comme on peut récupérer plusieurs objets par leurs IDs.
 ****
 
-=== @EmbeddedColumnNaming
+=== https://docs.jboss.org/hibernate/orm/7.0/whats-new/whats-new.html#embedded-column-naming[@EmbeddedColumnNaming]
+
+*_Attention, la feature est en incubation !_*
+
 
 Les types embarqués existent depuis un moment mais étaient limités.
 
@@ -450,7 +453,7 @@ Les patterns `home_%` et `work_%` impliquent que la table avoir des colonnes nom
 Le type `Embedabble` est maintenant utilisable plusieurs fois dans un même objet, cette évolution ne sera peut être pas utile tout le temps, mais elle est la bienvenue !
 ****
 
-=== @NamedEntityGraph
+=== https://docs.jboss.org/hibernate/orm/7.0/whats-new/whats-new.html#NamedEntityGraph[@NamedEntityGraph]
 
 Les `EntityGraph` existent depuis JPA 2.1, voir <<note2>>.
 
@@ -768,7 +771,7 @@ Certaines features sont peu impactantes :
 D'autres peuvent s'avérer utiles :
 
 * amélioration metamodel
-* Embedable
+* EmbeddedColumnNaming (en incubation !)
 * nouvelles fonctions JPQL et EntityManager/Session
 
 Finalement d'autres sont incontournables
