@@ -764,16 +764,20 @@ Ces versions majeures d'Hibernate 7 et JPA 3.2 sont très intéressantes.
 
 Certaines features sont peu impactantes :
 
-* options
-* configuration dynamique
+* Les Options
+* La configuration dynamique
 * ...
 
 D'autres peuvent s'avérer utiles :
 
-* amélioration metamodel
-* EmbeddedColumnNaming (en incubation !)
-* nouvelles fonctions JPQL et EntityManager/Session
+* Les EmbeddedColumnNaming (en incubation !)
+* Améliorations JPQL et EntityManager/Session
 
 Finalement d'autres sont incontournables
 
 * Améliorations sur les EntityGraph (@NamedEntityGraph et amélioration API JPA)
+* Le Metamodel
+
+Parmis ces features, on peut s'attendre à un intégration des nouveautés côté Spring Data avec Spring Framework 7 et Spring Boot 4.
+
+Mais ce qu'il faut savoir, c'est que certaines de ces features JPA existent depuis bien longtemps, Hibernate 7 et JPA 3.2 ne font que les améliorer : les EntityGraph et le Metamodel sont compatibles avec Spring Data depuis un moment déjà, et en valent le détour !
